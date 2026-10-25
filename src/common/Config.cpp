@@ -61,6 +61,7 @@ void Config::setDefaults()
 
     // Application settings
     m_settings.startMinimized = false;
+    m_settings.compositionGuides = false;
     m_settings.virtualCameraEnabled = false;
     m_settings.virtualCameraDevice = "/dev/video42";
     m_settings.virtualCameraResolution = "match";
@@ -191,7 +192,8 @@ bool Config::load(std::vector<ValidationError> &errors)
         "virtual_camera_resolution",
         "white_balance_kelvin",
         "focus",
-        "snapshot_directory"
+        "snapshot_directory",
+        "composition_guides"
     };
 
     auto isPresetKey = [](const std::string &key) -> bool {
@@ -555,6 +557,11 @@ bool Config::parseLine(const std::string &line, int lineNumber, std::vector<Vali
         }
     } else if (key == "preview_format") {
         m_settings.previewFormat = value;
+    } else if (key == "composition_guides") {
+        if (!parseBool(value, m_settings.compositionGuides)) {
+            addError(InvalidValue, "composition_guides must be true/false or enabled/disabled");
+            return false;
+        }
     } else if (key == "start_minimized") {
         if (!parseBool(value, m_settings.startMinimized)) {
             addError(InvalidValue, "start_minimized must be true/false or enabled/disabled");
@@ -827,6 +834,8 @@ bool Config::save()
     file << "# Application Settings\n";
     file << "# Start application minimized to system tray\n";
     file << "start_minimized=" << (m_settings.startMinimized ? "enabled" : "disabled") << "\n";
+    file << "# Rule-of-thirds guides over the preview\n";
+    file << "composition_guides=" << (m_settings.compositionGuides ? "enabled" : "disabled") << "\n";
 
     file << "\n# Virtual camera output\n";
     file << "virtual_camera_enabled=" << (m_settings.virtualCameraEnabled ? "enabled" : "disabled") << "\n";

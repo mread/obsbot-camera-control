@@ -1,6 +1,8 @@
 #include "FilterPreviewWidget.h"
+#include <QPainter>
+#include <functional>
+#include <QResizeEvent>
 
-#include <QDebug>
 #include <QOpenGLFunctions>
 #include <QVector2D>
 #include <QVideoFrame>
@@ -290,6 +292,79 @@ void FilterPreviewWidget::paintGL()
 
     renderToCurrentTarget(size());
     m_program->release();
+}
+
+namespace {
+
+// Rule-of-thirds lines drawn by a transparent child widget on top of the GL
+// output. A child widget is composited over the video and never enters the
+// frames sent to the virtual camera; mouse events pass through to the preview.
+class GuidesOverlay : public QWidget
+{
+public:
+    GuidesOverlay(QWidget *parent, std::function<QSizeF()> frameSize)
+        : QWidget(parent), m_frameSize(std::move(frameSize))
+    {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        // The frame keeps its aspect ratio, centred (see renderToCurrentTarget).
+        const QSizeF frame = m_frameSize();
+        if (frame.isEmpty())
+            return;
+        const qreal frameAspect = frame.width() / frame.height();
+        QRectF area = rect();
+        if (frameAspect > area.width() / area.height()) {
+            const qreal h = area.width() / frameAspect;
+            area = QRectF(area.left(), area.center().y() - h / 2, area.width(), h);
+        } else {
+            const qreal w = area.height() * frameAspect;
+            area = QRectF(area.center().x() - w / 2, area.top(), w, area.height());
+        }
+
+        QList<QLineF> lines;
+        for (int i = 1; i <= 2; ++i) {
+            const qreal x = area.left() + area.width() * i / 3.0;
+            const qreal y = area.top() + area.height() * i / 3.0;
+            lines << QLineF(x, area.top(), x, area.bottom()) << QLineF(area.left(), y, area.right(), y);
+        }
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        // A dark line under a light one stays visible on any picture.
+        painter.setPen(QPen(QColor(0, 0, 0, 140), 3));
+        painter.drawLines(lines);
+        painter.setPen(QPen(QColor(255, 255, 255, 210), 1));
+        painter.drawLines(lines);
+    }
+
+private:
+    std::function<QSizeF()> m_frameSize;
+};
+
+} // namespace
+
+void FilterPreviewWidget::setGuidesVisible(bool visible)
+{
+    if (!m_guidesOverlay) {
+        m_guidesOverlay = new GuidesOverlay(this, [this]() {
+            return m_currentImage.isNull() ? QSizeF() : frameAspectSize();
+        });
+        m_guidesOverlay->setGeometry(rect());
+    }
+    m_guidesOverlay->setVisible(visible);
+    m_guidesOverlay->raise();
+}
+
+void FilterPreviewWidget::resizeEvent(QResizeEvent *event)
+{
+    QOpenGLWidget::resizeEvent(event);
+    if (m_guidesOverlay)
+        m_guidesOverlay->setGeometry(rect());
 }
 
 void FilterPreviewWidget::ensureProgram()

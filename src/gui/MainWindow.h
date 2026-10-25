@@ -150,6 +150,7 @@ private:
     Tiny2DeviceTab *m_tiny2DeviceTab {nullptr};
     PreviewAimFilter *m_previewAim {nullptr};
     QPushButton *m_compactButton {nullptr};
+    QPushButton *m_guidesButton {nullptr};
     ControlService *m_controlService {nullptr};
     bool m_tiny2Layout {false};
     PTZControlWidget *m_ptzWidget;

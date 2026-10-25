@@ -40,6 +40,7 @@ public:
     void setControlsVisible(bool visible);
     void setVirtualCameraStreamer(VirtualCameraStreamer *streamer);
     void setVideoEffects(const FilterPreviewWidget::VideoEffectsSettings &settings);
+    void setGuidesVisible(bool visible) { m_filterPreviewWidget->setGuidesVisible(visible); }
     FilterPreviewWidget::VideoEffectsSettings videoEffects() const;
     void captureSnapshot();
 

@@ -76,6 +76,7 @@ public:
     ~FilterPreviewWidget() override;
 
     void setVideoEffects(const VideoEffectsSettings &settings);
+    void setGuidesVisible(bool visible);
     VideoEffectsSettings videoEffects() const { return m_effectSettings; }
     void updateVideoFrame(const QVideoFrame &frame);
 
@@ -86,8 +87,10 @@ protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
+    QWidget *m_guidesOverlay = nullptr;
     void ensureProgram();
     void ensureGeometry();
     void ensureFramebuffer(const QSize &size);

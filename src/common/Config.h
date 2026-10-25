@@ -74,6 +74,7 @@ public:
 
         // Application settings
         bool startMinimized;  // Start application minimized to tray
+        bool compositionGuides;  // Rule-of-thirds lines over the preview
         bool virtualCameraEnabled;
         std::string virtualCameraDevice;
         std::string virtualCameraResolution;

@@ -304,6 +304,19 @@ void MainWindow::setupUI()
     QHBoxLayout *headerButtonsLayout = new QHBoxLayout(headerButtons);
     headerButtonsLayout->setContentsMargins(0, 0, 0, 0);
     headerButtonsLayout->setSpacing(8);
+    m_guidesButton = new QPushButton(tr("Guides"), m_previewCard);
+    m_guidesButton->setCheckable(true);
+    m_guidesButton->setToolTip(tr("Show rule-of-thirds lines over the preview (not sent to other apps)"));
+    connect(m_guidesButton, &QPushButton::toggled, this, [this](bool checked) {
+        m_previewWidget->setGuidesVisible(checked);
+        auto settings = m_controller->getConfig().getSettings();
+        if (settings.compositionGuides != checked) {
+            settings.compositionGuides = checked;
+            m_controller->getConfig().setSettings(settings);
+            m_controller->saveConfig();
+        }
+    });
+    headerButtonsLayout->addWidget(m_guidesButton);
     headerButtonsLayout->addWidget(m_snapshotButton);
     headerButtonsLayout->addWidget(m_copyClipboardButton);
     headerButtonsLayout->addWidget(m_detachPreviewButton);
@@ -1435,6 +1448,7 @@ void MainWindow::loadConfiguration()
 
     // Initialize UI widgets from config
     auto settings = m_controller->getConfig().getSettings();
+    m_guidesButton->setChecked(settings.compositionGuides);
     m_trackingWidget->setTrackingEnabled(settings.faceTracking);
     m_trackingWidget->setAiMode(settings.aiMode);
     m_trackingWidget->setHumanSubMode(settings.aiSubMode);
