@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QList>
 #include <QMap>
 #include <memory>
 #include <functional>
@@ -65,7 +66,55 @@ public:
         // Status
         int zoomRatio;
         int devStatus;
+
+        // Tiny 2 device state, decoded from the status block
+        int autoSleepSeconds;   // 0 = never
+        bool micDuringSleep;
+        int voiceCommands;      // bit per Device::AudioCtrlCmdType (HiTiny..Preset)
+        int voiceLanguage;      // Device::AudioCtrlLanguageType
+        double voiceZoom;       // 1.0 - 4.0
+        int antiFlicker;        // Device::PowerLineFreqType
+        bool mirrored;
+        int ledLevel;           // 0 off, 1-3 (read-only: no SDK setter for the Tiny 2)
+        bool exposureAuto;
+        int shutter;            // Device::DevShutterTimeType
+        int sharpness;
+        int hue;
     };
+
+    struct GimbalAngles {
+        double yawDeg = 0.0;    // positive = camera turns to its left (view moves left)
+        double pitchDeg = 0.0;  // positive = looking down
+        bool valid = false;
+    };
+
+    struct CameraPreset {
+        int id = -1;
+        QString name;
+        double yawDeg = 0.0;
+        double pitchDeg = 0.0;
+        double zoom = 1.0;
+    };
+
+    struct GestureSettings {
+        bool targetSelect = false;
+        bool zoom = false;
+        bool dynamicZoom = false;
+        bool dynamicZoomMirror = false;
+        double zoomFactor = 2.0;
+        bool valid = false;
+    };
+
+    struct ZoneLimits {
+        double yawMinDeg = -100.0;
+        double yawMaxDeg = 100.0;
+        double pitchMinDeg = -90.0;
+        double pitchMaxDeg = 90.0;
+        bool autoSelect = false;
+        bool valid = false;
+    };
+
+    static constexpr int kMaxPresets = 3;
 
     struct ParamRange {
         int min = 0;
@@ -123,6 +172,53 @@ public:
     bool setSaturation(int value);  // 0-255
     bool setWhiteBalance(int mode); // 0=Auto, 1=Daylight, etc.
     bool setWhiteBalanceManual(int kelvin);
+
+    // Tiny 2 gimbal (degrees, read from the motors rather than the UVC cache)
+    GimbalAngles readGimbalAngles();
+    bool setGimbalAngles(double yawDeg, double pitchDeg);
+    bool setGimbalSpeed(double yawDegPerSec, double pitchDegPerSec);  // (0, 0) stops
+    bool resetGimbal();
+
+    // Presets stored on the camera
+    QList<CameraPreset> readPresets();
+    bool recallPreset(int id);
+    bool savePreset(int id, const QString &name);  // current position and zoom
+    bool renamePreset(int id, const QString &name);
+    bool deletePreset(int id);
+
+    // Power-on position and AI mode
+    CameraPreset readStartupPosition();
+    bool setStartupFromCurrent(int aiMode, int aiSubMode);
+    bool resetStartup();
+
+    // Sleep
+    bool setAwake(bool awake);
+    bool setAutoSleep(int seconds);
+    bool setMicDuringSleep(bool enabled);
+
+    // Gestures and voice
+    GestureSettings readGestures();
+    bool setGesture(int gesture, bool enabled);  // 0 target, 1 zoom, 2 dynamic zoom, 3 dynamic zoom mirror
+    bool setVoiceCommand(int command, bool enabled);
+    bool setVoiceLanguage(int language);
+    bool setVoiceZoom(double zoom);
+
+    // Image controls with no V4L2 equivalent in the old UI
+    bool setSharpness(int value);
+    bool setHue(int value);
+    bool setAntiFlicker(int mode);
+    bool setExposure(bool autoExposure, int shutter);
+    bool setMirror(bool mirrored);
+
+    // Zone tracking
+    ZoneLimits readZoneLimits();
+    bool setZoneLimits(const ZoneLimits &limits);
+    bool setZoneTracking(bool enabled);
+    bool setZoneStartFromCurrent();
+    bool recallZoneStart();
+
+    bool factoryReset();
+    bool isTiny2() const;
 
     // Configuration
     bool loadConfig(std::vector<Config::ValidationError> &errors);

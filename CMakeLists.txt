@@ -26,6 +26,7 @@ add_executable(obsbot-gui
     src/gui/MainWindow.cpp
     src/gui/MainWindow.h
     src/gui/CameraController.cpp
+    src/gui/CameraControllerTiny2.cpp
     src/gui/CameraController.h
     src/gui/TrackingControlWidget.cpp
     src/gui/TrackingControlWidget.h

@@ -787,6 +787,26 @@ void CameraController::updateState()
     m_currentState.autoFramingEnabled = (m_currentState.aiMode != Device::AiWorkModeNone);
     m_currentState.trackingMode = status.tiny.ai_tracker_speed;
     m_currentState.audioAutoGainEnabled = status.tiny.audio_auto_gain;
+    m_currentState.autoSleepSeconds = status.tiny.auto_sleep_time;
+    m_currentState.micDuringSleep = status.tiny.sleep_micro;
+    m_currentState.voiceCommands = status.tiny.voice_ctrl;
+    m_currentState.voiceLanguage = status.tiny.voice_ctrl_language;
+    m_currentState.voiceZoom = 1.0 + (maxZoom() - 1.0) * qBound(0, int(status.tiny.voice_ctrl_zoom), 100) / 100.0;
+    m_currentState.antiFlicker = status.tiny.anti_flicker;
+    m_currentState.mirrored = status.tiny.image_flip_hor;
+    m_currentState.ledLevel = status.tiny.led_brightness_level;
+
+    int32_t shutter = 0;
+    bool exposureAuto = true;
+    if (m_device->cameraGetExposureAbsolute(shutter, exposureAuto) == 0) {
+        m_currentState.shutter = shutter;
+        m_currentState.exposureAuto = exposureAuto;
+    }
+    int32_t sharpness = 0, hue = 0;
+    if (m_device->cameraGetImageSharpR(sharpness) == 0)
+        m_currentState.sharpness = sharpness;
+    if (m_device->cameraGetImageHueR(hue) == 0)
+        m_currentState.hue = hue;
 
     // Image controls - read current values from camera
     // Note: Preserve auto mode flags - camera doesn't have concept of "auto" for these
