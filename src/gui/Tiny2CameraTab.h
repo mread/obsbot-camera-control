@@ -32,6 +32,7 @@ public:
 public slots:
     void recallPreset(int slot);
     void stepZoom(double delta);
+    void setZoom(double zoom);
 
 signals:
     void presetsChanged(const QList<CameraController::CameraPreset> &presets);

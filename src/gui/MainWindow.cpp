@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "AimPad.h"
+#include "ControlService.h"
 #include "ModeBar.h"
 #include "PreviewAimFilter.h"
 #include "Tiny2CameraTab.h"
@@ -28,6 +29,8 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QMap>
+#include <QDebug>
 #include <QTabWidget>
 #include <QSpacerItem>
 #include <QSizePolicy>
@@ -210,6 +213,8 @@ MainWindow::MainWindow(QWidget *parent)
                  << "popout: n/a";
     });
 #endif
+
+    setupControlService();
 
     // Start connecting to camera
     m_controller->connectToCamera();
@@ -1259,6 +1264,61 @@ void MainWindow::setCompactMode(bool compact)
     m_previewCard->setVisible(!compact);
     if (compact)
         resize(m_controlCard->sizeHint().width() + 48, height());
+}
+
+void MainWindow::setupControlService()
+{
+    ControlService::Actions actions;
+    actions.recallPreset = [this](int slot) {
+        if (m_tiny2Layout)
+            m_tiny2CameraTab->recallPreset(slot - 1);
+    };
+    actions.setMode = [this](const QString &name) {
+        static const QMap<QString, int> modes = {
+            {"off", Device::AiWorkModeNone}, {"human", Device::AiWorkModeHuman},
+            {"group", Device::AiWorkModeGroup}, {"hand", Device::AiWorkModeHand},
+            {"desk", Device::AiWorkModeDesk}, {"whiteboard", Device::AiWorkModeWhiteBoard},
+        };
+        const auto it = modes.constFind(name.toLower());
+        if (it == modes.constEnd())
+            return false;
+        if (m_tiny2Layout)
+            m_modeBar->selectMode(*it);
+        return true;
+    };
+    actions.toggleTracking = [this]() {
+        if (m_tiny2Layout)
+            m_modeBar->selectMode(m_modeBar->currentMode() == Device::AiWorkModeNone
+                                  ? Device::AiWorkModeHuman : Device::AiWorkModeNone);
+    };
+    actions.zoomBy = [this](double delta) {
+        if (m_tiny2Layout)
+            m_tiny2CameraTab->stepZoom(delta);
+    };
+    actions.zoomTo = [this](double zoom) {
+        if (m_tiny2Layout)
+            m_tiny2CameraTab->setZoom(zoom);
+    };
+    actions.recentre = [this]() {
+        if (!m_tiny2Layout)
+            return;
+        takeManualControl();
+        m_controller->resetGimbal();
+        scheduleGimbalRefresh();
+    };
+    actions.setAwake = [this](bool awake) { m_controller->setAwake(awake); };
+    actions.toggleSleep = [this]() {
+        m_controller->setAwake(m_controller->getCurrentState().devStatus == Device::DevStatusSleep);
+    };
+    actions.showWindow = [this]() {
+        showNormal();
+        raise();
+        activateWindow();
+    };
+
+    m_controlService = new ControlService(actions, this);
+    if (!m_controlService->registerOnBus())
+        qWarning() << "MainWindow: keyboard-shortcut actions unavailable (D-Bus registration failed)";
 }
 
 void MainWindow::onCommandFailed(const QString &description, int errorCode)

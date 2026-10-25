@@ -365,6 +365,11 @@ void Tiny2CameraTab::stepZoom(double delta)
     m_zoomSlider->setValue(m_zoomSlider->value() + qRound(delta * 100.0));
 }
 
+void Tiny2CameraTab::setZoom(double zoom)
+{
+    m_zoomSlider->setValue(qRound(zoom * 100.0));
+}
+
 void Tiny2CameraTab::onViewClicked(int fov)
 {
     markUserChange(m_viewGroup);

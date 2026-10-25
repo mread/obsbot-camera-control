@@ -1,11 +1,41 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QCoreApplication>
 #include <QTabWidget>
 #include <QTimer>
+#include <cstring>
+#include "ControlService.h"
 #include "MainWindow.h"
+
+namespace {
+
+// `obsbot-gui --action preset 1` talks to the running instance over D-Bus and
+// exits, without opening a window or touching the camera.
+int runAction(int argc, char *argv[])
+{
+    QCoreApplication app(argc, argv);
+    QCommandLineParser parser;
+    parser.setApplicationDescription(ControlService::usage());
+    parser.addHelpOption();
+    QCommandLineOption actionOption("action", "Send an action to the running instance.", "name");
+    parser.addOption(actionOption);
+    parser.addPositionalArgument("argument", "Argument for the action, if it takes one.");
+    parser.process(app);
+
+    QStringList action{parser.value(actionOption)};
+    action += parser.positionalArguments();
+    return ControlService::sendAction(action);
+}
+
+} // namespace
 
 int main(int argc, char *argv[])
 {
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--action") == 0 || std::strncmp(argv[i], "--action=", 9) == 0)
+            return runAction(argc, argv);
+    }
+
     QApplication app(argc, argv);
 
     // Body text at 16 px or more, whatever the desktop default.
@@ -16,6 +46,10 @@ int main(int argc, char *argv[])
     }
 
     QCommandLineParser parser;
+    parser.setApplicationDescription(QStringLiteral(
+        "Control OBSBOT cameras.\n\nWith --action <name> [argument], send an action to the running "
+        "instance instead of opening a window. Bind these to keys in your desktop, e.g. in sway:\n"
+        "  bindsym $mod+Ctrl+1 exec obsbot-gui --action preset 1\n\n") + ControlService::usage());
     parser.addHelpOption();
     QCommandLineOption screenshotOption("screenshot",
         "Save a PNG of the window once the camera has connected, then quit.", "file");

@@ -31,6 +31,7 @@ class Tiny2CameraTab;
 class Tiny2ImageTab;
 class Tiny2DeviceTab;
 class PreviewAimFilter;
+class ControlService;
 
 /**
  * @brief Main application window
@@ -99,6 +100,7 @@ private:
     void scheduleGimbalRefresh();
     void takeManualControl();
     void setCompactMode(bool compact);
+    void setupControlService();
 
     // Controller
     CameraController *m_controller;
@@ -145,6 +147,7 @@ private:
     Tiny2DeviceTab *m_tiny2DeviceTab {nullptr};
     PreviewAimFilter *m_previewAim {nullptr};
     QPushButton *m_compactButton {nullptr};
+    ControlService *m_controlService {nullptr};
     bool m_tiny2Layout {false};
     PTZControlWidget *m_ptzWidget;
     CameraSettingsWidget *m_settingsWidget;
