@@ -25,6 +25,12 @@ class QWidget;
 class QLineEdit;
 class QComboBox;
 class VirtualCameraStreamer;
+class ModeBar;
+class AimPad;
+class Tiny2CameraTab;
+class Tiny2ImageTab;
+class Tiny2DeviceTab;
+class PreviewAimFilter;
 
 /**
  * @brief Main application window
@@ -86,6 +92,14 @@ private:
     void updateVirtualCameraStreamerState();
     void fitTabToCurrentPage();
 
+    // Tiny 2 layout: mode bar, aiming pad and Camera/Image/Device tabs
+    void setTiny2Layout(bool tiny2);
+    void showPreviewPlaceholder();
+    void refreshGimbalPosition();
+    void scheduleGimbalRefresh();
+    void takeManualControl();
+    void setCompactMode(bool compact);
+
     // Controller
     CameraController *m_controller;
 
@@ -124,6 +138,14 @@ private:
 
     // Control widgets
     TrackingControlWidget *m_trackingWidget;
+    ModeBar *m_modeBar {nullptr};
+    AimPad *m_aimPad {nullptr};
+    Tiny2CameraTab *m_tiny2CameraTab {nullptr};
+    Tiny2ImageTab *m_tiny2ImageTab {nullptr};
+    Tiny2DeviceTab *m_tiny2DeviceTab {nullptr};
+    PreviewAimFilter *m_previewAim {nullptr};
+    QPushButton *m_compactButton {nullptr};
+    bool m_tiny2Layout {false};
     PTZControlWidget *m_ptzWidget;
     CameraSettingsWidget *m_settingsWidget;
     VideoEffectsWidget *m_effectsWidget;

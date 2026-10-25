@@ -1,4 +1,10 @@
 #include "MainWindow.h"
+#include "AimPad.h"
+#include "ModeBar.h"
+#include "PreviewAimFilter.h"
+#include "Tiny2CameraTab.h"
+#include "Tiny2DeviceTab.h"
+#include "Tiny2ImageTab.h"
 #include "PreviewWindow.h"
 #include "VirtualCameraStreamer.h"
 
@@ -21,6 +27,7 @@
 #include <QScrollArea>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStatusBar>
 #include <QTabWidget>
 #include <QSpacerItem>
 #include <QSizePolicy>
@@ -303,7 +310,14 @@ void MainWindow::setupUI()
     m_previewPlaceholder->setWordWrap(true);
     m_previewPlaceholder->setMinimumHeight(240);
     m_previewStack->addWidget(m_previewPlaceholder);
+
+    m_aimPad = new AimPad(m_previewCard);
+    m_previewStack->addWidget(m_aimPad);
     m_previewStack->setCurrentWidget(m_previewPlaceholder);
+
+    m_modeBar = new ModeBar(m_controller, m_previewCard);
+    m_modeBar->setVisible(false);
+    previewLayout->addWidget(m_modeBar);
 
     // Control column (scrollable so window can be smaller)
     m_controlCard = new QFrame(m_splitter);
@@ -342,6 +356,11 @@ void MainWindow::setupUI()
     m_statusChip->setObjectName("statusChip");
     statusHeader->addWidget(m_statusChip);
     statusHeader->addStretch();
+    m_compactButton = new QPushButton(tr("Compact"), m_statusBanner);
+    m_compactButton->setCheckable(true);
+    m_compactButton->setToolTip(tr("Hide the preview and show only the controls, for use while another app has the camera"));
+    connect(m_compactButton, &QPushButton::toggled, this, &MainWindow::setCompactMode);
+    statusHeader->addWidget(m_compactButton);
     statusLayout->addLayout(statusHeader);
 
     m_deviceInfoLabel = new QLabel(tr("Connecting to camera..."), m_statusBanner);
@@ -428,6 +447,27 @@ void MainWindow::setupUI()
             });
     m_tabWidget->addTab(m_effectsWidget, tr("Creative FX"));
     scrollLayout->addWidget(m_tabWidget);
+
+    m_tiny2CameraTab = new Tiny2CameraTab(m_controller, m_modeBar, this);
+    m_tiny2ImageTab = new Tiny2ImageTab(m_controller, this);
+    m_tiny2DeviceTab = new Tiny2DeviceTab(m_controller, this);
+    m_tiny2CameraTab->hide();
+    m_tiny2ImageTab->hide();
+    m_tiny2DeviceTab->hide();
+    connect(m_tiny2CameraTab, &Tiny2CameraTab::presetsChanged, m_aimPad, &AimPad::setPresets);
+    connect(m_tiny2CameraTab, &Tiny2CameraTab::gimbalMoved, this, &MainWindow::scheduleGimbalRefresh);
+    connect(m_aimPad, &AimPad::aimRequested, this, [this](double yawDeg, double pitchDeg) {
+        takeManualControl();
+        m_controller->setGimbalAngles(yawDeg, pitchDeg);
+        scheduleGimbalRefresh();
+    });
+
+    if (QWidget *display = m_previewWidget->findChild<FilterPreviewWidget *>()) {
+        m_previewAim = new PreviewAimFilter(m_controller, display, this);
+        m_previewAim->zoomBy = [this](double delta) { m_tiny2CameraTab->stepZoom(delta); };
+        m_previewAim->beforeManualAim = [this]() { takeManualControl(); };
+        connect(m_previewAim, &PreviewAimFilter::gimbalMoved, this, &MainWindow::scheduleGimbalRefresh);
+    }
     m_effectsWidget->reset();
 
     // Resize tab widget to fit the current tab (QTabWidget normally sizes to the tallest)
@@ -794,7 +834,7 @@ void MainWindow::detachPreviewToWindow()
     m_previewWindow->raise();
     m_previewWindow->activateWindow();
 
-    m_previewStack->setCurrentWidget(m_previewPlaceholder);
+    showPreviewPlaceholder();
     m_previewCard->setMinimumWidth(0);
     m_previewCard->setMaximumWidth(0);
     m_previewCard->hide();
@@ -859,7 +899,7 @@ void MainWindow::attachPreviewToPanel()
     if (m_previewToggleButton->isChecked()) {
         m_previewStack->setCurrentWidget(widget);
     } else {
-        m_previewStack->setCurrentWidget(m_previewPlaceholder);
+        showPreviewPlaceholder();
     }
 
     if (m_widthLocked) {
@@ -962,6 +1002,8 @@ void MainWindow::onTogglePreview(bool enabled)
             QString warningText = "⚠ Cannot open camera preview\n(In use by: " + process + ")";
             m_cameraWarningLabel->setText(warningText);
             m_cameraWarningLabel->setVisible(true);
+            m_aimPad->setMessage(tr("%1 is using the camera, so there's no preview. "
+                                    "You can still aim it here and change any setting.").arg(process));
 
             // Uncheck the button
             m_previewToggleButton->setChecked(false);
@@ -994,7 +1036,7 @@ void MainWindow::onTogglePreview(bool enabled)
         attachPreviewToPanel();
         m_previewWidget->enablePreview(false);
         m_previewWindow->hide();
-        m_previewStack->setCurrentWidget(m_previewPlaceholder);
+        showPreviewPlaceholder();
     }
 
     updateVirtualCameraStreamerState();
@@ -1050,9 +1092,20 @@ void MainWindow::onCameraConnected(const CameraController::CameraInfo &info)
     bool v4l2Mode = m_controller->isV4l2Only();
     m_trackingWidget->setV4l2Mode(v4l2Mode);
     m_settingsWidget->setV4l2Mode(v4l2Mode);
+    setTiny2Layout(m_controller->isTiny2());
+    if (m_tiny2Layout)
+        m_tiny2DeviceTab->setCameraInfo(info);
 
     QTimer::singleShot(100, this, [this]() {
-        if (m_isCameraSwitch) {
+        if (m_tiny2Layout) {
+            // Settings live on the camera, as in OBSBOT Center: show what it
+            // has rather than pushing this app's saved state onto it.
+            onStateChanged(m_controller->getCurrentState());
+            m_tiny2CameraTab->refreshFromCamera();
+            m_tiny2DeviceTab->refreshFromCamera();
+            refreshGimbalPosition();
+            m_isCameraSwitch = false;
+        } else if (m_isCameraSwitch) {
             // Pull the new camera's actual state into the UI
             // without pushing the old camera's state back
             auto state = m_controller->getCurrentState();
@@ -1079,6 +1132,7 @@ void MainWindow::onCameraConnected(const CameraController::CameraInfo &info)
 void MainWindow::onCameraDisconnected()
 {
     m_isCameraSwitch = false;
+    setTiny2Layout(false);
     m_deviceInfoLabel->setText("❌ Camera Disconnected");
     updateStatusBanner(false);
     m_statusLabel->setText("Status: Not connected");
@@ -1087,7 +1141,7 @@ void MainWindow::onCameraDisconnected()
 
     attachPreviewToPanel();
     m_previewWindow->hide();
-    m_previewStack->setCurrentWidget(m_previewPlaceholder);
+    showPreviewPlaceholder();
 
     if (m_previewToggleButton->isChecked()) {
         m_previewToggleButton->setChecked(false);
@@ -1106,8 +1160,15 @@ void MainWindow::onStateChanged(const CameraController::CameraState &state)
     m_settingsWidget->setV4l2Mode(v4l2Mode);
 
     // Update all widgets with new state
-    m_trackingWidget->updateFromState(state);
-    m_settingsWidget->updateFromState(state);
+    if (m_tiny2Layout) {
+        m_modeBar->updateFromState(state);
+        m_tiny2CameraTab->updateFromState(state);
+        m_tiny2ImageTab->updateFromState(state);
+        m_tiny2DeviceTab->updateFromState(state);
+    } else {
+        m_trackingWidget->updateFromState(state);
+        m_settingsWidget->updateFromState(state);
+    }
 
     // Refit tab height — widget visibility may have changed (e.g. Tiny2 advanced controls)
     fitTabToCurrentPage();
@@ -1119,6 +1180,85 @@ void MainWindow::fitTabToCurrentPage()
     if (!page) return;
     m_tabWidget->setMaximumHeight(
         page->sizeHint().height() + m_tabWidget->tabBar()->sizeHint().height());
+}
+
+void MainWindow::setTiny2Layout(bool tiny2)
+{
+    if (tiny2 == m_tiny2Layout)
+        return;
+    m_tiny2Layout = tiny2;
+
+    QSignalBlocker blocker(m_tabWidget);
+    if (tiny2) {
+        for (QWidget *page : {static_cast<QWidget *>(m_trackingWidget), static_cast<QWidget *>(m_ptzWidget),
+                              static_cast<QWidget *>(m_settingsWidget)}) {
+            const int index = m_tabWidget->indexOf(page);
+            if (index >= 0)
+                m_tabWidget->removeTab(index);
+            page->hide();
+        }
+        m_tabWidget->insertTab(0, m_tiny2CameraTab, tr("Camera"));
+        m_tabWidget->insertTab(1, m_tiny2ImageTab, tr("Image"));
+        m_tabWidget->insertTab(2, m_tiny2DeviceTab, tr("Device"));
+    } else {
+        for (QWidget *page : {static_cast<QWidget *>(m_tiny2CameraTab), static_cast<QWidget *>(m_tiny2ImageTab),
+                              static_cast<QWidget *>(m_tiny2DeviceTab)}) {
+            const int index = m_tabWidget->indexOf(page);
+            if (index >= 0)
+                m_tabWidget->removeTab(index);
+            page->hide();
+        }
+        m_tabWidget->insertTab(0, m_trackingWidget, tr("Tracking"));
+        m_tabWidget->insertTab(1, m_ptzWidget, tr("Presets"));
+        m_tabWidget->insertTab(2, m_settingsWidget, tr("Camera Image"));
+    }
+    m_tabWidget->setCurrentIndex(0);
+    m_modeBar->setVisible(tiny2);
+    // The Tiny 2 tabs carry more per row; keep them from being clipped.
+    m_controlCard->setMinimumWidth(tiny2 ? 600 : 340);
+    if (m_previewStack->currentWidget() != m_previewWidget)
+        showPreviewPlaceholder();
+    fitTabToCurrentPage();
+}
+
+void MainWindow::showPreviewPlaceholder()
+{
+    // With a Tiny 2 the space shows where the camera points and lets you aim
+    // it, which still works while another app holds the video stream.
+    m_previewStack->setCurrentWidget(m_tiny2Layout ? static_cast<QWidget *>(m_aimPad)
+                                                   : static_cast<QWidget *>(m_previewPlaceholder));
+}
+
+void MainWindow::refreshGimbalPosition()
+{
+    if (!m_tiny2Layout)
+        return;
+    const auto angles = m_controller->readGimbalAngles();
+    m_aimPad->setActual(angles);
+    m_tiny2CameraTab->setGimbalAngles(angles);
+}
+
+void MainWindow::scheduleGimbalRefresh()
+{
+    // The gimbal takes a moment to arrive; read it once it has.
+    QTimer::singleShot(1500, this, &MainWindow::refreshGimbalPosition);
+}
+
+void MainWindow::takeManualControl()
+{
+    // While any AI mode is active the gimbal belongs to the tracker and manual
+    // moves snap back, so aiming by hand switches tracking off first.
+    if (m_modeBar && m_modeBar->currentMode() != Device::AiWorkModeNone) {
+        m_modeBar->selectMode(Device::AiWorkModeNone);
+        statusBar()->showMessage(tr("Tracking turned off so you can aim by hand"), 5000);
+    }
+}
+
+void MainWindow::setCompactMode(bool compact)
+{
+    m_previewCard->setVisible(!compact);
+    if (compact)
+        resize(m_controlCard->sizeHint().width() + 48, height());
 }
 
 void MainWindow::onCommandFailed(const QString &description, int errorCode)
@@ -1137,6 +1277,11 @@ void MainWindow::updateStatus()
     }
 
     auto state = m_controller->getCurrentState();
+
+    if (m_tiny2Layout) {
+        onStateChanged(state);
+        refreshGimbalPosition();
+    }
 
     QStringList statusParts;
     statusParts << QString("AI: %1").arg(state.aiMode == 0 ? "Off" : "On");
@@ -1507,7 +1652,7 @@ void MainWindow::onPreviewFailed(const QString &error)
 
     attachPreviewToPanel();
     m_previewWindow->hide();
-    m_previewStack->setCurrentWidget(m_previewPlaceholder);
+    showPreviewPlaceholder();
 
     if (m_previewToggleButton->isChecked()) {
         m_previewToggleButton->setChecked(false);
