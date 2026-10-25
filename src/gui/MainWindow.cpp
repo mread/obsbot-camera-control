@@ -491,7 +491,6 @@ void MainWindow::setupUI()
 
     QLabel *virtualResolutionHint = new QLabel(tr("Pick a fixed size to keep Zoom and other apps happy when you change preview quality."), virtualCameraGroup);
     virtualResolutionHint->setWordWrap(true);
-    virtualResolutionHint->setStyleSheet("color: palette(mid); font-size: 11px;");
     virtualLayout->addWidget(virtualResolutionHint);
     scrollLayout->addWidget(virtualCameraGroup);
 
@@ -519,7 +518,6 @@ void MainWindow::setupUI()
 
     QLabel *snapshotHint = new QLabel(tr("Use Copy to also place the image on the clipboard. Leave blank for the default path shown above."), snapshotGroup);
     snapshotHint->setWordWrap(true);
-    snapshotHint->setStyleSheet("color: palette(mid); font-size: 11px;");
     snapshotLayout->addWidget(snapshotHint);
 
     scrollLayout->addWidget(snapshotGroup);
@@ -606,7 +604,6 @@ void MainWindow::applyModernStyle()
     const QColor highlightedText = pal.color(QPalette::HighlightedText);
     const QColor shadow = pal.color(QPalette::Shadow);
     const QColor brightText = pal.color(QPalette::BrightText);
-    const QColor placeholder = pal.color(QPalette::PlaceholderText);
 
     const QColor cardBackground = blendColors(base, window, 0.5);
     const QColor cardBorder = withAlphaF(blendColors(shadow, text, 0.4), 0.45);
@@ -622,11 +619,10 @@ void MainWindow::applyModernStyle()
     const QColor accentChipBackground = withAlphaF(blendColors(highlight, cardBackground, 0.15), 0.7);
     const QColor accentChipText = blendColors(highlightedText.isValid() ? highlightedText : brightText, text, 0.2);
 
-    const QColor warningColor = blendColors(highlight.lighter(140), text, 0.4);
+    // Warnings stand out by weight; a tinted colour would fall short of 7:1 contrast.
+    const QColor warningColor = text;
 
-    const QColor previewPlaceholderText = placeholder.isValid()
-        ? placeholder
-        : blendColors(text, mutedTone, 0.45);
+    const QColor previewPlaceholderText = text;
     const QColor previewPlaceholderBorder = withAlphaF(blendColors(text, cardBackground, 0.2), 0.35);
 
     const QColor buttonBase = withAlphaF(blendColors(button, cardBackground, 0.2), 0.55);
@@ -653,8 +649,8 @@ void MainWindow::applyModernStyle()
     const QColor groupBorder = withAlphaF(blendColors(cardBorder, mutedTone, 0.35), 0.55);
     const QColor tabBackground = withAlphaF(blendColors(button, cardBackground, 0.2), 0.5);
 
-    const QColor footerStatusColor = withAlphaF(text, 0.65);
-    const QColor footerCheckboxColor = withAlphaF(text, 0.7);
+    const QColor footerStatusColor = text;
+    const QColor footerCheckboxColor = text;
     const QColor detachCheckedText = highlight;
 
     const QString style = QStringLiteral(R"(
@@ -724,7 +720,6 @@ void MainWindow::applyModernStyle()
         QTabBar::tab {
             padding: 6px 10px;
             margin: 0 2px;
-            font-size: 13px;
         }
         QTabBar::tab:selected {
             font-weight: 600;
@@ -1182,26 +1177,26 @@ void MainWindow::updateVirtualCameraAvailability(const QString &devicePath)
     const QString modprobeCommand = modprobeCommandForDevice(devicePath);
 
     QString statusText;
-    QString statusColor;
+    bool needsAction = false;
 
     if (deviceExists) {
         statusText = tr("Virtual camera available (%1)").arg(devicePath);
-        statusColor = QStringLiteral("#2e7d32");
         m_virtualCameraAvailable = true;
     } else if (moduleLoaded) {
         statusText = tr("v4l2loopback is loaded, but %1 does not exist.\nRun: %2")
                          .arg(devicePath, modprobeCommand);
-        statusColor = QStringLiteral("#b26a00");
+        needsAction = true;
         m_virtualCameraAvailable = false;
     } else {
         statusText = tr("Virtual camera support is disabled.\nInstall the module and load it with:\n%1")
                          .arg(modprobeCommand);
-        statusColor = QStringLiteral("#b71c1c");
+        needsAction = true;
         m_virtualCameraAvailable = false;
     }
 
     m_virtualCameraStatusLabel->setText(statusText);
-    m_virtualCameraStatusLabel->setStyleSheet(QStringLiteral("color: %1;").arg(statusColor));
+    // Text colour stays the theme's for contrast; weight marks what needs doing.
+    m_virtualCameraStatusLabel->setStyleSheet(needsAction ? QStringLiteral("font-weight: 600;") : QString());
     if (m_virtualCameraCheckbox) {
         m_virtualCameraCheckbox->setToolTip(statusText);
     }

@@ -28,11 +28,11 @@ PTZControlWidget::PTZControlWidget(CameraController *controller, QWidget *parent
         QHBoxLayout *row = new QHBoxLayout();
         row->setSpacing(8);
         QLabel *titleLabel = new QLabel(QString("Preset %1").arg(i + 1), this);
-        titleLabel->setStyleSheet("font-weight: 600; font-size: 11px;");
+        titleLabel->setStyleSheet("font-weight: 600;");
         row->addWidget(titleLabel);
 
         presetUi.statusLabel = new QLabel("Empty", this);
-        presetUi.statusLabel->setStyleSheet("color: palette(mid); font-size: 11px;");
+        presetUi.statusLabel->setStyleSheet("");
         row->addWidget(presetUi.statusLabel, 1);
 
         presetUi.recallButton = new QPushButton("Recall", this);
@@ -66,11 +66,11 @@ PTZControlWidget::PTZControlWidget(CameraController *controller, QWidget *parent
         QHBoxLayout *row = new QHBoxLayout();
         row->setSpacing(8);
         QLabel *titleLabel = new QLabel(QString("Preset %1").arg(i + 1), this);
-        titleLabel->setStyleSheet("font-weight: 600; font-size: 11px;");
+        titleLabel->setStyleSheet("font-weight: 600;");
         row->addWidget(titleLabel);
 
         imagePresetUi.statusLabel = new QLabel("Empty", this);
-        imagePresetUi.statusLabel->setStyleSheet("color: palette(mid); font-size: 11px;");
+        imagePresetUi.statusLabel->setStyleSheet("");
         row->addWidget(imagePresetUi.statusLabel, 1);
 
         imagePresetUi.recallButton = new QPushButton("Recall", this);

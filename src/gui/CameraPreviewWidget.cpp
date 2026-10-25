@@ -99,7 +99,6 @@ void CameraPreviewWidget::setupUI()
     controlLayout->setSpacing(8);
 
     QLabel *formatLabel = new QLabel(tr("Preview Quality:"), this);
-    formatLabel->setStyleSheet("font-size: 11px;");
 
     m_formatCombo = new QComboBox(this);
     m_formatCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -112,7 +111,6 @@ void CameraPreviewWidget::setupUI()
     layout->addWidget(m_controlRow);
 
     m_statusLabel = new QLabel(tr("Preview disabled"), this);
-    m_statusLabel->setStyleSheet("color: palette(mid); font-size: 11px;");
     layout->addWidget(m_statusLabel);
 
     m_filterPreviewWidget = new FilterPreviewWidget(this);

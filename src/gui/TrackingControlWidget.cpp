@@ -30,7 +30,7 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     groupLayout->setSpacing(12);
 
     m_trackingCheckBox = new QCheckBox("Enable Auto-Framing", this);
-    m_trackingCheckBox->setStyleSheet("font-weight: 600; font-size: 14px;");
+    m_trackingCheckBox->setStyleSheet("font-weight: 600;");
     connect(m_trackingCheckBox, &QCheckBox::toggled, this, &TrackingControlWidget::onTrackingToggled);
     groupLayout->addWidget(m_trackingCheckBox);
 
@@ -42,7 +42,7 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
 
     QHBoxLayout *modeLayout = new QHBoxLayout();
     QLabel *modeLabel = new QLabel("Tracking Mode", this);
-    modeLabel->setStyleSheet("font-size: 11px; font-weight: 600;");
+    modeLabel->setStyleSheet("font-weight: 600;");
     m_modeCombo = new QComboBox(this);
     m_modeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_modeCombo->addItem("Off", Device::AiWorkModeNone);
@@ -59,7 +59,7 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
 
     QHBoxLayout *subModeLayout = new QHBoxLayout();
     QLabel *subModeLabel = new QLabel("Human Sub-Mode", this);
-    subModeLabel->setStyleSheet("font-size: 11px; font-weight: 600;");
+    subModeLabel->setStyleSheet("font-weight: 600;");
     m_humanSubModeCombo = new QComboBox(this);
     m_humanSubModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_humanSubModeCombo->addItem("Normal", Device::AiSubModeNormal);
@@ -75,12 +75,11 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
 
     m_autoZoomCheckBox = new QCheckBox("Enable AI Auto Zoom", this);
     connect(m_autoZoomCheckBox, &QCheckBox::toggled, this, &TrackingControlWidget::onAutoZoomToggled);
-    m_autoZoomCheckBox->setStyleSheet("font-size: 11px;");
     advancedLayout->addWidget(m_autoZoomCheckBox);
 
     QHBoxLayout *trackingModeLayout = new QHBoxLayout();
     QLabel *trackingModeLabel = new QLabel("Tracking Mode", this);
-    trackingModeLabel->setStyleSheet("font-size: 11px; font-weight: 600;");
+    trackingModeLabel->setStyleSheet("font-weight: 600;");
     m_trackingModeCombo = new QComboBox(this);
     m_trackingModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_trackingModeCombo->addItem("Standard", Device::AiVTrackStandard);
@@ -92,7 +91,6 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     advancedLayout->addLayout(trackingModeLayout);
 
     m_audioGainCheckBox = new QCheckBox("Enable Audio Auto Gain", this);
-    m_audioGainCheckBox->setStyleSheet("font-size: 11px;");
     connect(m_audioGainCheckBox, &QCheckBox::toggled, this, &TrackingControlWidget::onAudioGainToggled);
     advancedLayout->addWidget(m_audioGainCheckBox);
 
@@ -155,12 +153,10 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
 
     // Invert controls checkbox
     m_invertControlsCheckBox = new QCheckBox(tr("Invert controls"), this);
-    m_invertControlsCheckBox->setStyleSheet("font-size: 10px;");
     leftColumn->addWidget(m_invertControlsCheckBox);
 
     // Mirror checkbox — syncs with Creative FX horizontal flip
     m_mirrorCheckBox = new QCheckBox(tr("Mirror view"), this);
-    m_mirrorCheckBox->setStyleSheet("font-size: 10px;");
     connect(m_mirrorCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
         emit mirrorToggled(checked);
     });
@@ -179,7 +175,6 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     // Position label (full width below both columns)
     m_positionLabel = new QLabel("Position: Pan 0.00, Tilt 0.00", this);
     m_positionLabel->setAlignment(Qt::AlignCenter);
-    m_positionLabel->setStyleSheet("color: palette(mid); font-size: 11px;");
     ptzGroupLayout->addWidget(m_positionLabel);
 
     ptzContainerLayout->addWidget(ptzGroupBox);

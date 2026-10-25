@@ -57,7 +57,6 @@ VideoEffectsWidget::VideoEffectsWidget(QWidget *parent)
 
     QLabel *infoLabel = new QLabel(tr("Creative adjustments are applied in software and do not change the camera's onboard settings."), this);
     infoLabel->setWordWrap(true);
-    infoLabel->setStyleSheet("color: palette(mid); font-size: 11px;");
     rootLayout->addWidget(infoLabel);
 
     auto addSlider = [&](QVBoxLayout *groupLayout, const QString &label, float min, float max, float initial, std::function<void(float)> setter) {
