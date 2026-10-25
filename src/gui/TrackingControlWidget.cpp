@@ -78,22 +78,19 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     m_autoZoomCheckBox->setStyleSheet("font-size: 11px;");
     advancedLayout->addWidget(m_autoZoomCheckBox);
 
-    QHBoxLayout *speedLayout = new QHBoxLayout();
-    QLabel *speedLabel = new QLabel("Tracking Speed", this);
-    speedLabel->setStyleSheet("font-size: 11px; font-weight: 600;");
-    m_speedCombo = new QComboBox(this);
-    m_speedCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_speedCombo->addItem("Lazy", Device::AiTrackSpeedLazy);
-    m_speedCombo->addItem("Slow", Device::AiTrackSpeedSlow);
-    m_speedCombo->addItem("Standard", Device::AiTrackSpeedStandard);
-    m_speedCombo->addItem("Fast", Device::AiTrackSpeedFast);
-    m_speedCombo->addItem("Crazy", Device::AiTrackSpeedCrazy);
-    m_speedCombo->addItem("Auto", Device::AiTrackSpeedAuto);
-    connect(m_speedCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &TrackingControlWidget::onSpeedChanged);
-    speedLayout->addWidget(speedLabel);
-    speedLayout->addWidget(m_speedCombo, 1);
-    advancedLayout->addLayout(speedLayout);
+    QHBoxLayout *trackingModeLayout = new QHBoxLayout();
+    QLabel *trackingModeLabel = new QLabel("Tracking Mode", this);
+    trackingModeLabel->setStyleSheet("font-size: 11px; font-weight: 600;");
+    m_trackingModeCombo = new QComboBox(this);
+    m_trackingModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_trackingModeCombo->addItem("Standard", Device::AiVTrackStandard);
+    m_trackingModeCombo->addItem("Headroom", Device::AiVTrackHeadroom);
+    m_trackingModeCombo->addItem("Motion", Device::AiVTrackMotion);
+    connect(m_trackingModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &TrackingControlWidget::onTrackingModeChanged);
+    trackingModeLayout->addWidget(trackingModeLabel);
+    trackingModeLayout->addWidget(m_trackingModeCombo, 1);
+    advancedLayout->addLayout(trackingModeLayout);
 
     m_audioGainCheckBox = new QCheckBox("Enable Audio Auto Gain", this);
     m_audioGainCheckBox->setStyleSheet("font-size: 11px;");
@@ -220,12 +217,12 @@ void TrackingControlWidget::setAutoZoomEnabled(bool enabled)
     m_autoZoomCheckBox->setChecked(enabled);
 }
 
-void TrackingControlWidget::setTrackSpeed(int speedMode)
+void TrackingControlWidget::setTrackingMode(int mode)
 {
-    int idx = m_speedCombo->findData(speedMode);
+    int idx = m_trackingModeCombo->findData(mode);
     if (idx >= 0) {
-        QSignalBlocker blocker(m_speedCombo);
-        m_speedCombo->setCurrentIndex(idx);
+        QSignalBlocker blocker(m_trackingModeCombo);
+        m_trackingModeCombo->setCurrentIndex(idx);
     }
 }
 
@@ -323,11 +320,11 @@ void TrackingControlWidget::updateFromState(const CameraController::CameraState 
             m_autoZoomCheckBox->blockSignals(false);
         }
 
-        int speedIdx = m_speedCombo->findData(state.trackSpeedMode);
-        if (speedIdx >= 0 && m_speedCombo->currentIndex() != speedIdx) {
-            m_speedCombo->blockSignals(true);
-            m_speedCombo->setCurrentIndex(speedIdx);
-            m_speedCombo->blockSignals(false);
+        int trackingModeIdx = m_trackingModeCombo->findData(state.trackingMode);
+        if (trackingModeIdx >= 0 && m_trackingModeCombo->currentIndex() != trackingModeIdx) {
+            m_trackingModeCombo->blockSignals(true);
+            m_trackingModeCombo->setCurrentIndex(trackingModeIdx);
+            m_trackingModeCombo->blockSignals(false);
         }
 
         if (m_audioGainCheckBox->isChecked() != state.audioAutoGainEnabled) {
@@ -433,12 +430,12 @@ void TrackingControlWidget::onAutoZoomToggled(bool checked)
     m_commandTimer->start(1000);
 }
 
-void TrackingControlWidget::onSpeedChanged(int index)
+void TrackingControlWidget::onTrackingModeChanged(int index)
 {
     Q_UNUSED(index);
     if (!m_tiny2Capabilities) return;
     m_userInitiated = true;
-    m_controller->setTrackSpeed(m_speedCombo->currentData().toInt());
+    m_controller->setTrackingMode(m_trackingModeCombo->currentData().toInt());
     m_commandTimer->start(1000);
 }
 

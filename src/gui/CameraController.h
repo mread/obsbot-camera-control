@@ -36,7 +36,7 @@ public:
         int aiMode;
         int aiSubMode;
         bool autoZoomEnabled;
-        int trackSpeedMode;
+        int trackingMode;    // 0 standard, 1 headroom, 2 motion
         bool audioAutoGainEnabled;
 
         // PTZ
@@ -96,7 +96,7 @@ public:
     bool enableAutoFraming(bool enabled);
     bool setAiMode(int mode, int subMode);
     bool setAutoZoom(bool enabled);
-    bool setTrackSpeed(int speedMode);
+    bool setTrackingMode(int mode);
     bool setAudioAutoGain(bool enabled);
 
     // PTZ controls

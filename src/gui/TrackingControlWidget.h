@@ -36,12 +36,12 @@ public:
     void setAiMode(int mode);
     void setHumanSubMode(int subMode);
     void setAutoZoomEnabled(bool enabled);
-    void setTrackSpeed(int speedMode);
+    void setTrackingMode(int mode);
     void setAudioAutoGain(bool enabled);
     int currentAiMode() const { return m_modeCombo->currentData().toInt(); }
     int currentHumanSubMode() const { return m_humanSubModeCombo->currentData().toInt(); }
     bool isAutoZoomEnabled() const { return m_autoZoomCheckBox->isChecked(); }
-    int currentTrackSpeed() const { return m_speedCombo->currentData().toInt(); }
+    int currentTrackingMode() const { return m_trackingModeCombo->currentData().toInt(); }
     bool isAudioAutoGainEnabled() const { return m_audioGainCheckBox->isChecked(); }
     void setMirrored(bool mirrored);
     bool isInvertControls() const { return m_invertControlsCheckBox->isChecked(); }
@@ -54,7 +54,7 @@ private slots:
     void onModeChanged(int index);
     void onHumanSubModeChanged(int index);
     void onAutoZoomToggled(bool checked);
-    void onSpeedChanged(int index);
+    void onTrackingModeChanged(int index);
     void onAudioGainToggled(bool checked);
 
     // Manual PTZ control slots
@@ -68,7 +68,7 @@ private:
     QComboBox *m_modeCombo;
     QComboBox *m_humanSubModeCombo;
     QCheckBox *m_autoZoomCheckBox;
-    QComboBox *m_speedCombo;
+    QComboBox *m_trackingModeCombo;
     QCheckBox *m_audioGainCheckBox;
     QWidget *m_advancedContainer;
     bool m_userInitiated;  // Track if change was user-initiated

@@ -363,17 +363,20 @@ bool CameraController::setAutoZoom(bool enabled)
     return success;
 }
 
-bool CameraController::setTrackSpeed(int speedMode)
+bool CameraController::setTrackingMode(int mode)
 {
     if (!m_connected || m_v4l2Only) return false;
 
-    auto speed = static_cast<Device::AiTrackSpeedType>(speedMode);
-    bool success = executeCommand("Set Tracking Speed", [this, speed]() {
-        return m_device->aiSetTrackSpeedTypeR(speed);
+    // Standard / Headroom / Motion. The status block echoes it back as
+    // ai_tracker_speed. (aiSetTrackSpeedTypeR, used here before, is a
+    // Tail Air command and leaves the Tiny 2 unchanged.)
+    auto trackingMode = static_cast<Device::AiVerticalTrackType>(mode);
+    bool success = executeCommand("Set Tracking Mode", [this, trackingMode]() {
+        return m_device->aiSetTrackingModeR(trackingMode);
     });
 
     if (success) {
-        m_currentState.trackSpeedMode = speedMode;
+        m_currentState.trackingMode = mode;
         emit stateChanged(m_currentState);
     }
 
@@ -781,7 +784,7 @@ void CameraController::updateState()
     m_currentState.fovMode = status.tiny.fov;
     m_currentState.devStatus = status.tiny.dev_status;
     m_currentState.autoFramingEnabled = (m_currentState.aiMode != Device::AiWorkModeNone);
-    m_currentState.trackSpeedMode = status.tiny.ai_tracker_speed;
+    m_currentState.trackingMode = status.tiny.ai_tracker_speed;
     m_currentState.audioAutoGainEnabled = status.tiny.audio_auto_gain;
 
     // Image controls - read current values from camera
@@ -873,7 +876,7 @@ void CameraController::applyConfigToCamera()
     if (isTiny2Family()) {
         setAiMode(settings.aiMode, settings.aiSubMode);
         setAutoZoom(settings.autoZoom);
-        setTrackSpeed(settings.trackSpeed);
+        setTrackingMode(settings.trackingMode);
         setAudioAutoGain(settings.audioAutoGain);
     }
 
@@ -910,7 +913,7 @@ void CameraController::applyCurrentStateToCamera(const CameraState &uiState)
     if (isTiny2Family()) {
         setAiMode(uiState.aiMode, uiState.aiSubMode);
         setAutoZoom(uiState.autoZoomEnabled);
-        setTrackSpeed(uiState.trackSpeedMode);
+        setTrackingMode(uiState.trackingMode);
         setAudioAutoGain(uiState.audioAutoGainEnabled);
     }
     setHDR(uiState.hdrEnabled);
@@ -948,7 +951,7 @@ void CameraController::saveCurrentStateToConfig()
     settings.aiMode = m_currentState.aiMode;
     settings.aiSubMode = m_currentState.aiSubMode;
     settings.autoZoom = m_currentState.autoZoomEnabled;
-    settings.trackSpeed = m_currentState.trackSpeedMode;
+    settings.trackingMode = m_currentState.trackingMode;
     settings.audioAutoGain = m_currentState.audioAutoGainEnabled;
 
     // Image controls

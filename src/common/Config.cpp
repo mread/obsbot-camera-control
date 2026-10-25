@@ -33,7 +33,7 @@ void Config::setDefaults()
     m_settings.aiMode = 0;            // AiWorkModeNone
     m_settings.aiSubMode = 0;         // AiSubModeNormal
     m_settings.autoZoom = false;
-    m_settings.trackSpeed = 2;        // AiTrackSpeedStandard
+    m_settings.trackingMode = 0;      // AiVTrackStandard
 
     // Image controls - use auto mode by default
     m_settings.brightnessAuto = true;
@@ -182,7 +182,8 @@ bool Config::load(std::vector<ValidationError> &errors)
         "ai_mode",
         "ai_sub_mode",
         "auto_zoom",
-        "track_speed",
+        "tracking_mode",
+        "track_speed",  // legacy: was a Tail Air-only speed setting, now ignored
         "audio_auto_gain",
         "preview_format",
         "virtual_camera_enabled",
@@ -419,15 +420,19 @@ bool Config::parseLine(const std::string &line, int lineNumber, std::vector<Vali
             return false;
         }
     } else if (key == "track_speed") {
+        // Legacy key. It drove aiSetTrackSpeedTypeR, which the SDK documents
+        // for the Tail Air only; the Tiny 2 ignores it. Accepted and ignored
+        // so existing config files still validate.
+    } else if (key == "tracking_mode") {
         try {
-            int trackSpeed = std::stoi(value);
-            if (trackSpeed < 0 || trackSpeed > 5) {
-                addError(InvalidValue, "track_speed must be between 0 and 5");
+            int trackingMode = std::stoi(value);
+            if (trackingMode < 0 || trackingMode > 2) {
+                addError(InvalidValue, "tracking_mode must be between 0 and 2");
                 return false;
             }
-            m_settings.trackSpeed = trackSpeed;
+            m_settings.trackingMode = trackingMode;
         } catch (...) {
-            addError(InvalidValue, "track_speed must be an integer between 0 and 5");
+            addError(InvalidValue, "tracking_mode must be an integer between 0 and 2");
             return false;
         }
     } else if (key == "brightness_auto") {
@@ -641,8 +646,8 @@ bool Config::validateSettings(std::vector<ValidationError> &errors)
         addError("ai_sub_mode out of range (must be 0-5)");
     }
 
-    if (m_settings.trackSpeed < 0 || m_settings.trackSpeed > 5) {
-        addError("track_speed out of range (must be 0-5)");
+    if (m_settings.trackingMode < 0 || m_settings.trackingMode > 2) {
+        addError("tracking_mode out of range (must be 0-2)");
     }
 
     if (m_settings.whiteBalance == 255) {
@@ -764,8 +769,8 @@ bool Config::save()
     file << "# Enable AI Auto Zoom\n";
     file << "auto_zoom=" << (m_settings.autoZoom ? "enabled" : "disabled") << "\n\n";
 
-    file << "# Tracking Speed (0=Lazy,1=Slow,2=Standard,3=Fast,4=Crazy,5=Auto)\n";
-    file << "track_speed=" << m_settings.trackSpeed << "\n\n";
+    file << "# Tracking Mode (0=Standard,1=Headroom,2=Motion)\n";
+    file << "tracking_mode=" << m_settings.trackingMode << "\n\n";
 
     // Image controls
     file << "# Brightness Auto Mode (when enabled, brightness slider is read-only)\n";
