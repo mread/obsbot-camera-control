@@ -84,7 +84,6 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     m_trackingModeCombo = new QComboBox(this);
     m_trackingModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_trackingModeCombo->addItem("Standard", Device::AiVTrackStandard);
-    m_trackingModeCombo->addItem("Headroom", Device::AiVTrackHeadroom);
     m_trackingModeCombo->addItem("Motion", Device::AiVTrackMotion);
     connect(m_trackingModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &TrackingControlWidget::onTrackingModeChanged);

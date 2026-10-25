@@ -367,7 +367,8 @@ bool CameraController::setTrackingMode(int mode)
 {
     if (!m_connected || m_v4l2Only) return false;
 
-    // Standard / Headroom / Motion. The status block echoes it back as
+    // Standard / Motion (OBSBOT Center offers the Tiny 2 only these two;
+    // the camera also accepts Headroom). The status block echoes it back as
     // ai_tracker_speed. (aiSetTrackSpeedTypeR, used here before, is a
     // Tail Air command and leaves the Tiny 2 unchanged.)
     auto trackingMode = static_cast<Device::AiVerticalTrackType>(mode);

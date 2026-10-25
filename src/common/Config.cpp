@@ -769,7 +769,7 @@ bool Config::save()
     file << "# Enable AI Auto Zoom\n";
     file << "auto_zoom=" << (m_settings.autoZoom ? "enabled" : "disabled") << "\n\n";
 
-    file << "# Tracking Mode (0=Standard,1=Headroom,2=Motion)\n";
+    file << "# Tracking Mode (0=Standard,2=Motion)\n";
     file << "tracking_mode=" << m_settings.trackingMode << "\n\n";
 
     // Image controls
