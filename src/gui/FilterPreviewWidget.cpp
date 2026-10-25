@@ -188,6 +188,10 @@ FilterPreviewWidget::~FilterPreviewWidget()
         cleanupGLResources();
         doneCurrent();
     }
+    // QOpenGLWidget's destructor destroys the context after this object's
+    // own part is gone; the aboutToBeDestroyed slot must not run then.
+    if (context())
+        disconnect(context(), nullptr, this, nullptr);
 }
 
 void FilterPreviewWidget::setVideoEffects(const VideoEffectsSettings &settings)
