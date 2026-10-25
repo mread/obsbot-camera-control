@@ -53,7 +53,7 @@ void CameraController::connectToCamera(const QString &devicePath)
         return list.front();
     };
 
-    auto onDevChanged = [this, pickDevice](std::string /*dev_sn*/, bool connected, void * /*param*/) {
+    auto handleDevChanged = [this, pickDevice](bool connected) {
         if (connected) {
             auto dev_list = Devices::get().getDevList();
             auto dev = pickDevice(dev_list);
@@ -82,6 +82,14 @@ void CameraController::connectToCamera(const QString &devicePath)
             resetControlRanges();
             emit cameraDisconnected();
         }
+    };
+
+    // The SDK calls this from its own detection thread. Hop onto the
+    // controller's thread before touching any state or emitting signals.
+    auto onDevChanged = [this, handleDevChanged](std::string /*dev_sn*/, bool connected, void * /*param*/) {
+        QMetaObject::invokeMethod(this, [handleDevChanged, connected]() {
+            handleDevChanged(connected);
+        }, Qt::QueuedConnection);
     };
 
     Devices::get().setDevChangedCallback(onDevChanged, nullptr);
