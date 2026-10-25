@@ -43,7 +43,7 @@ public:
         int fov;              // 0=Wide, 1=Medium, 2=Narrow
         bool faceAE;
         bool faceFocus;
-        double zoom;          // 1.0 - 2.0
+        double zoom;          // 1.0 - 4.0 (Tiny 2), 1.0 - 2.0 otherwise
         double pan;           // -1.0 to 1.0
         double tilt;          // -1.0 to 1.0
 

@@ -164,6 +164,7 @@ void CameraController::connectV4l2(const std::string &devicePath)
         card = card.substr(0, colon);
     if (card.empty())
         card = "OBSBOT";
+    m_v4l2CardName = QString::fromStdString(card);
     m_cameraInfo.name = QString::fromStdString(card) + QStringLiteral(" (V4L2)");
     m_cameraInfo.serialNumber = QString();
     m_cameraInfo.version = QString();
@@ -213,7 +214,9 @@ void CameraController::updateV4l2State()
     auto zoomRange = m_v4l2.getZoomRange();
     int zoomMax = zoomRange.valid ? zoomRange.max : 100;
     int zoomRaw = m_v4l2.getZoomAbsolute();
-    m_currentState.zoom = (zoomMax > 0) ? (static_cast<double>(zoomRaw) / zoomMax + 1.0) : 1.0;
+    m_currentState.zoom = (zoomMax > 0)
+        ? 1.0 + (maxZoom() - 1.0) * static_cast<double>(zoomRaw) / zoomMax
+        : 1.0;
 
     auto panRange = m_v4l2.getPanRange();
     auto tiltRange = m_v4l2.getTiltRange();
@@ -436,16 +439,17 @@ bool CameraController::setZoom(double zoom)
 {
     if (!m_connected) return false;
 
-    zoom = qBound(1.0, zoom, 2.0);
+    const double zoomLimit = maxZoom();
+    zoom = qBound(1.0, zoom, zoomLimit);
 
     bool success;
     if (m_v4l2Only) {
         auto zoomRange = m_v4l2.getZoomRange();
         int zoomMax = zoomRange.valid ? zoomRange.max : 100;
-        int v4l2Zoom = static_cast<int>((zoom - 1.0) * zoomMax);
+        int v4l2Zoom = qRound((zoom - 1.0) / (zoomLimit - 1.0) * zoomMax);
         success = m_v4l2.setZoomAbsolute(v4l2Zoom);
     } else {
-        uint32_t zoomRatio = static_cast<uint32_t>(zoom * 100);
+        uint32_t zoomRatio = static_cast<uint32_t>(qRound(zoom * 100));
         success = executeCommand("Set Zoom", [this, zoomRatio]() {
             return m_device->cameraSetZoomWithSpeedAbsoluteR(zoomRatio, 255);
         });
@@ -462,6 +466,16 @@ bool CameraController::setZoom(double zoom)
 bool CameraController::centerView()
 {
     return setPanTilt(0.0, 0.0);
+}
+
+double CameraController::maxZoom() const
+{
+    // The Tiny 2 zooms to 4x: cameraSetZoomWithSpeedAbsoluteR accepts ratios
+    // 100-400 and the status block reports them back as 0-100 (verified on
+    // firmware 6.0.11). Other models keep the 2x limit the SDK documents.
+    if (m_v4l2Only)
+        return m_v4l2CardName == QLatin1String("OBSBOT Tiny 2") ? 4.0 : 2.0;
+    return m_cameraInfo.productType == ObsbotProdTiny2 ? 4.0 : 2.0;
 }
 
 bool CameraController::setHDR(bool enabled)
@@ -728,8 +742,11 @@ void CameraController::updateState()
     m_currentState.aiMode = status.tiny.ai_mode;
     m_currentState.aiSubMode = status.tiny.ai_sub_mode;
     m_currentState.zoomRatio = status.tiny.zoom_ratio;
-    // Derive zoom float from zoom_ratio (100 = 1.0x, 200 = 2.0x)
-    if (status.tiny.zoom_ratio >= 100 && status.tiny.zoom_ratio <= 200) {
+    // The Tiny 2 reports zoom as 0-100 across its 1x-4x range; other models
+    // have been seen reporting the ratio itself (100 = 1.0x, 200 = 2.0x).
+    if (m_cameraInfo.productType == ObsbotProdTiny2 && status.tiny.zoom_ratio <= 100) {
+        m_currentState.zoom = 1.0 + (maxZoom() - 1.0) * status.tiny.zoom_ratio / 100.0;
+    } else if (status.tiny.zoom_ratio >= 100 && status.tiny.zoom_ratio <= 200) {
         m_currentState.zoom = status.tiny.zoom_ratio / 100.0;
     } else {
         qDebug() << "CameraController: unexpected zoom_ratio" << status.tiny.zoom_ratio
@@ -904,7 +921,7 @@ void CameraController::saveCurrentStateToConfig()
     settings.fov = m_currentState.fovMode;
     settings.faceAE = m_currentState.faceAEEnabled;
     settings.faceFocus = m_currentState.faceFocusEnabled;
-    settings.zoom = qBound(1.0, m_currentState.zoom, 2.0);
+    settings.zoom = qBound(1.0, m_currentState.zoom, maxZoom());
     settings.pan = m_currentState.pan;
     settings.tilt = m_currentState.tilt;
     settings.aiMode = m_currentState.aiMode;

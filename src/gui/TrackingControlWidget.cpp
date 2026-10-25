@@ -132,7 +132,7 @@ TrackingControlWidget::TrackingControlWidget(CameraController *controller, QWidg
     zoomLayout->addWidget(zoomLabel);
     m_zoomSlider = new QSlider(Qt::Horizontal, this);
     m_zoomSlider->setMinimum(100);  // 1.00x
-    m_zoomSlider->setMaximum(200);  // 2.00x
+    m_zoomSlider->setMaximum(200);  // 2.00x until the connected model is known
     m_zoomSlider->setValue(100);
     connect(m_zoomSlider, &QSlider::valueChanged, this, &TrackingControlWidget::onZoomChanged);
     zoomLayout->addWidget(m_zoomSlider);
@@ -337,17 +337,6 @@ void TrackingControlWidget::updateFromState(const CameraController::CameraState 
         }
     }
 
-    // Sync zoom slider from camera state (only when user isn't dragging)
-    if (!m_zoomSlider->isSliderDown() && !commandInFlight && !isSettling) {
-        int zoomSliderVal = static_cast<int>(state.zoom * 10.0 + 0.5);
-        if (m_zoomSlider->value() != zoomSliderVal) {
-            m_zoomSlider->blockSignals(true);
-            m_zoomSlider->setValue(zoomSliderVal);
-            m_zoomSlider->blockSignals(false);
-            m_zoomLabel->setText(QString("%1x").arg(zoomSliderVal / 10.0, 0, 'f', 1));
-        }
-    }
-
     // Sync focus slider from camera state (only when user isn't dragging)
     if (!m_focusSlider->isSliderDown() && !commandInFlight && !isSettling) {
         if (m_focusSlider->value() != state.manualFocusValue) {
@@ -356,6 +345,12 @@ void TrackingControlWidget::updateFromState(const CameraController::CameraState 
             m_focusSlider->blockSignals(false);
             m_focusLabel->setText(QString::number(state.manualFocusValue));
         }
+    }
+
+    const int zoomSliderMax = qRound(m_controller->maxZoom() * 100.0);
+    if (m_zoomSlider->maximum() != zoomSliderMax) {
+        QSignalBlocker blocker(m_zoomSlider);
+        m_zoomSlider->setMaximum(zoomSliderMax);
     }
 
     // Sync zoom slider from camera state (only when user isn't dragging)

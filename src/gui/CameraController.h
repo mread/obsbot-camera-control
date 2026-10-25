@@ -105,6 +105,7 @@ public:
     bool adjustTilt(double delta);
     bool setZoom(double zoom);
     bool centerView();
+    double maxZoom() const;  // Highest optical zoom factor for the connected model
 
     // Camera settings
     bool setHDR(bool enabled);
@@ -156,6 +157,7 @@ private:
     V4l2Backend m_v4l2;
     QTimer *m_v4l2ScanTimer = nullptr;
     QString m_v4l2DevicePath;
+    QString m_v4l2CardName;
     CameraInfo m_cameraInfo;
     CameraState m_currentState;
     CameraState m_cachedState;  // Cache intended state during settling

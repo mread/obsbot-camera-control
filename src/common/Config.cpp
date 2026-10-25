@@ -305,13 +305,13 @@ bool Config::parseLine(const std::string &line, int lineNumber, std::vector<Vali
             } else if (suffix == "zoom") {
                 try {
                     double zoom = std::stod(value);
-                    if (zoom < 1.0 || zoom > 2.0) {
-                        addError(InvalidValue, base + "zoom must be between 1.0 and 2.0");
+                    if (zoom < 1.0 || zoom > 4.0) {
+                        addError(InvalidValue, base + "zoom must be between 1.0 and 4.0");
                         return false;
                     }
                     preset.zoom = zoom;
                 } catch (...) {
-                    addError(InvalidValue, base + "zoom must be a number between 1.0 and 2.0");
+                    addError(InvalidValue, base + "zoom must be a number between 1.0 and 4.0");
                     return false;
                 }
                 return true;
@@ -355,14 +355,14 @@ bool Config::parseLine(const std::string &line, int lineNumber, std::vector<Vali
             double zoom = std::stod(value);
             if (zoom == 0.0) {
                 m_settings.zoom = 0.0;
-            } else if (zoom < 1.0 || zoom > 2.0) {
-                addError(InvalidValue, "zoom must be between 1.0 and 2.0");
+            } else if (zoom < 1.0 || zoom > 4.0) {
+                addError(InvalidValue, "zoom must be between 1.0 and 4.0");
                 return false;
             } else {
                 m_settings.zoom = zoom;
             }
         } catch (...) {
-            addError(InvalidValue, "zoom must be a number between 1.0 and 2.0");
+            addError(InvalidValue, "zoom must be a number between 1.0 and 4.0");
             return false;
         }
     } else if (key == "pan") {
@@ -621,8 +621,8 @@ bool Config::validateSettings(std::vector<ValidationError> &errors)
         addError("fov out of range (must be 0-2)");
     }
 
-    if (m_settings.zoom != 0.0 && (m_settings.zoom < 1.0 || m_settings.zoom > 2.0)) {
-        addError("zoom out of range (must be 1.0-2.0)");
+    if (m_settings.zoom != 0.0 && (m_settings.zoom < 1.0 || m_settings.zoom > 4.0)) {
+        addError("zoom out of range (must be 1.0-4.0)");
     }
 
     if (m_settings.pan < -1.0 || m_settings.pan > 1.0) {
@@ -662,8 +662,8 @@ bool Config::validateSettings(std::vector<ValidationError> &errors)
         if (preset.tilt < -1.0 || preset.tilt > 1.0) {
             addError("preset" + std::to_string(i + 1) + "_tilt out of range (must be -1.0 to 1.0)");
         }
-        if (preset.zoom < 1.0 || preset.zoom > 2.0) {
-            addError("preset" + std::to_string(i + 1) + "_zoom out of range (must be 1.0 to 2.0)");
+        if (preset.zoom < 1.0 || preset.zoom > 4.0) {
+            addError("preset" + std::to_string(i + 1) + "_zoom out of range (must be 1.0 to 4.0)");
         }
     }
 
@@ -727,7 +727,7 @@ bool Config::save()
     file << "#\n";
     file << "# Boolean values: true/false or enabled/disabled\n";
     file << "# FOV values: wide/medium/narrow or 0/1/2\n";
-    file << "# Numeric ranges: zoom (1.0-2.0), pan/tilt (-1.0 to 1.0)\n";
+    file << "# Numeric ranges: zoom (1.0-4.0 on Tiny 2, 1.0-2.0 otherwise), pan/tilt (-1.0 to 1.0)\n";
     file << "\n";
 
     file << "# Enable automatic face tracking\n";
@@ -746,7 +746,7 @@ bool Config::save()
     file << "# Face-based Auto Focus\n";
     file << "face_focus=" << (m_settings.faceFocus ? "enabled" : "disabled") << "\n\n";
 
-    file << "# Zoom level (1.0 to 2.0)\n";
+    file << "# Zoom level (1.0 to 4.0 on Tiny 2, 1.0 to 2.0 otherwise)\n";
     file << "zoom=" << m_settings.zoom << "\n\n";
 
     file << "# Pan position (-1.0 to 1.0, 0 is center)\n";
