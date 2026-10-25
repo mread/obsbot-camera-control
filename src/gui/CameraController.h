@@ -180,6 +180,7 @@ private:
     // Helper
     bool executeCommand(const QString &description, std::function<int32_t()> command);
     void updateState();
+    void readGimbalPosition();
     void saveCurrentStateToConfig();  // Update config with current camera state
     void refreshControlRanges();
     void resetControlRanges();

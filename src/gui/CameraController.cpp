@@ -73,6 +73,7 @@ void CameraController::connectToCamera(const QString &devicePath)
                 m_cameraInfo.productType = m_device->productType();
                 m_cameraInfo.connected = true;
                 refreshControlRanges();
+                readGimbalPosition();
                 emit cameraConnected(m_cameraInfo);
                 updateState();
             }
@@ -107,6 +108,7 @@ void CameraController::connectToCamera(const QString &devicePath)
             m_cameraInfo.productType = m_device->productType();
             m_cameraInfo.connected = true;
             refreshControlRanges();
+            readGimbalPosition();
             emit cameraConnected(m_cameraInfo);
             updateState();
         }
@@ -466,6 +468,25 @@ bool CameraController::setZoom(double zoom)
 bool CameraController::centerView()
 {
     return setPanTilt(0.0, 0.0);
+}
+
+void CameraController::readGimbalPosition()
+{
+    // Pan/tilt are otherwise never read from the camera, so m_currentState
+    // starts at (0, 0) and connecting pushed the gimbal back to centre.
+    // Only the Tiny 2 mapping is verified: the SDK's normalised pan/tilt span
+    // +/-130 deg and +/-90 deg, and its pitch is positive looking down.
+    if (m_v4l2Only || !m_device || m_cameraInfo.productType != ObsbotProdTiny2)
+        return;
+
+    float rollPitchYaw[3] = {0.0f, 0.0f, 0.0f};
+    if (m_device->gimbalGetAttitudeInfoR(rollPitchYaw) != 0)
+        return;
+
+    constexpr double kPanRangeDeg = 130.0;
+    constexpr double kTiltRangeDeg = 90.0;
+    m_currentState.pan = qBound(-1.0, rollPitchYaw[2] / kPanRangeDeg, 1.0);
+    m_currentState.tilt = qBound(-1.0, -rollPitchYaw[1] / kTiltRangeDeg, 1.0);
 }
 
 double CameraController::maxZoom() const
