@@ -176,7 +176,8 @@ public:
     // Tiny 2 gimbal (degrees, read from the motors rather than the UVC cache)
     GimbalAngles readGimbalAngles();
     bool setGimbalAngles(double yawDeg, double pitchDeg);
-    bool setGimbalSpeed(double yawDegPerSec, double pitchDegPerSec);  // (0, 0) stops
+    bool setGimbalSpeed(double yawDegPerSec, double pitchDegPerSec);
+    bool stopGimbal();  // retries: a dropped stop leaves the gimbal turning to its end stop
     bool resetGimbal();
 
     // Presets stored on the camera

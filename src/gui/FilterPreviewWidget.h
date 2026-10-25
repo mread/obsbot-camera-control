@@ -77,6 +77,9 @@ public:
 
     void setVideoEffects(const VideoEffectsSettings &settings);
     void setGuidesVisible(bool visible);
+    // Where the frame is drawn inside the widget (it keeps its aspect ratio,
+    // centred); empty until the first frame arrives.
+    QRectF pictureRect() const;
     VideoEffectsSettings videoEffects() const { return m_effectSettings; }
     void updateVideoFrame(const QVideoFrame &frame);
 

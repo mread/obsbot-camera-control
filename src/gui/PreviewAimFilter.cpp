@@ -12,8 +12,12 @@ constexpr qint64 kSendIntervalMs = 100;
 constexpr double kDeadZonePx = 6.0;
 constexpr double kWheelZoomStep = 0.1;
 
-// Horizontal field of view at 1x for each FOV setting (Device::FovType order).
-constexpr double kFovDeg[] = {86.0, 78.0, 65.0};
+// Horizontal field of view at 1x, measured on a Tiny 2 by turning the gimbal
+// a known angle and tracking the image shift. The 86/78/65 degrees OBSBOT
+// quotes are diagonal. The FOV setting doesn't change 1080p or 1440p frames
+// (only 4K ones, which this doesn't allow for), and the 4:3 modes add height,
+// not width, so one figure covers them.
+constexpr double kHorizontalFovDeg = 68.6;
 
 } // namespace
 
@@ -46,22 +50,28 @@ bool PreviewAimFilter::eventFilter(QObject *watched, QEvent *event)
     case QEvent::MouseMove: {
         if (!m_dragging)
             break;
-        sendSpeed(static_cast<QMouseEvent *>(event)->position(), false);
+        auto *mouse = static_cast<QMouseEvent *>(event);
+        // The release went somewhere else (a popup, another window): stop
+        // rather than keep turning towards wherever the pointer went.
+        if (!(mouse->buttons() & Qt::LeftButton)) {
+            endDrag();
+            return true;
+        }
+        sendSpeed(mouse->position(), false);
         return true;
     }
     case QEvent::MouseButtonRelease: {
         auto *mouse = static_cast<QMouseEvent *>(event);
         if (mouse->button() != Qt::LeftButton || !m_dragging)
             break;
-        m_dragging = false;
-        m_target->unsetCursor();
-        m_controller->setGimbalSpeed(0.0, 0.0);
-        emit gimbalMoved();
+        endDrag();
         return true;
     }
     case QEvent::MouseButtonDblClick: {
         auto *mouse = static_cast<QMouseEvent *>(event);
         if (mouse->button() == Qt::LeftButton) {
+            // The second click's press may have started a drag.
+            endDrag();
             if (beforeManualAim)
                 beforeManualAim();
             centreOn(mouse->position());
@@ -69,6 +79,10 @@ bool PreviewAimFilter::eventFilter(QObject *watched, QEvent *event)
         }
         break;
     }
+    case QEvent::Hide:
+    case QEvent::FocusOut:
+        endDrag();
+        break;
     case QEvent::Wheel: {
         auto *wheel = static_cast<QWheelEvent *>(event);
         const double notches = wheel->angleDelta().y() / 120.0;
@@ -80,6 +94,16 @@ bool PreviewAimFilter::eventFilter(QObject *watched, QEvent *event)
         break;
     }
     return QObject::eventFilter(watched, event);
+}
+
+void PreviewAimFilter::endDrag()
+{
+    if (!m_dragging)
+        return;
+    m_dragging = false;
+    m_target->unsetCursor();
+    m_controller->stopGimbal();
+    emit gimbalMoved();
 }
 
 void PreviewAimFilter::sendSpeed(const QPointF &pos, bool force)
@@ -103,20 +127,21 @@ void PreviewAimFilter::sendSpeed(const QPointF &pos, bool force)
 
 void PreviewAimFilter::centreOn(const QPointF &pos)
 {
+    const QRectF picture = pictureRect ? pictureRect() : QRectF(m_target->rect());
+    if (picture.isEmpty() || !picture.contains(pos))
+        return;
+
     const auto angles = m_controller->readGimbalAngles();
     if (!angles.valid)
         return;
 
-    const auto state = m_controller->getCurrentState();
-    const int fov = qBound(0, state.fovMode, 2);
-    const double zoom = qMax(1.0, state.zoom);
+    const double zoom = qMax(1.0, m_controller->getCurrentState().zoom);
     // Field of view narrows with zoom as atan(tan(fov/2) / zoom).
-    const double halfH = qAtan(qTan(qDegreesToRadians(kFovDeg[fov] / 2.0)) / zoom);
-    const double aspect = double(m_target->height()) / qMax(1, m_target->width());
-    const double halfV = qAtan(qTan(halfH) * aspect);
+    const double halfH = qAtan(qTan(qDegreesToRadians(kHorizontalFovDeg / 2.0)) / zoom);
+    const double halfV = qAtan(qTan(halfH) * picture.height() / picture.width());
 
-    const double fx = (pos.x() / qMax(1, m_target->width())) * 2.0 - 1.0;   // -1 left .. 1 right
-    const double fy = (pos.y() / qMax(1, m_target->height())) * 2.0 - 1.0;  // -1 top .. 1 bottom
+    const double fx = (pos.x() - picture.left()) / picture.width() * 2.0 - 1.0;  // -1 left .. 1 right
+    const double fy = (pos.y() - picture.top()) / picture.height() * 2.0 - 1.0;  // -1 top .. 1 bottom
     const double yawOffset = qRadiansToDegrees(qAtan(fx * qTan(halfH)));
     const double pitchOffset = qRadiansToDegrees(qAtan(fy * qTan(halfV)));
 

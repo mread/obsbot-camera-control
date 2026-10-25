@@ -31,9 +31,15 @@ CameraController::GimbalAngles CameraController::readGimbalAngles()
     if (!isTiny2())
         return angles;
 
+    // The camera drops the odd request (seen as -3 here), more often while
+    // other programs are also talking to it. One retry is normally enough.
+    constexpr int kAttempts = 3;
     float rollPitchYaw[3] = {0.0f, 0.0f, 0.0f};
-    if (m_device->gimbalGetAttitudeInfoR(rollPitchYaw) != 0)
-        return angles;
+    int attempt = 0;
+    while (m_device->gimbalGetAttitudeInfoR(rollPitchYaw) != 0) {
+        if (++attempt == kAttempts)
+            return angles;
+    }
 
     angles.pitchDeg = rollPitchYaw[1];
     angles.yawDeg = rollPitchYaw[2];
@@ -59,6 +65,19 @@ bool CameraController::setGimbalSpeed(double yawDegPerSec, double pitchDegPerSec
     // Continuous motion for drag-to-aim and the aiming pad. Failures are not
     // reported through commandFailed: these are sent many times a second.
     return m_device->gimbalSpeedCtrlR(pitchDegPerSec, yawDegPerSec) == 0;
+}
+
+bool CameraController::stopGimbal()
+{
+    if (!isTiny2()) return false;
+
+    constexpr int kAttempts = 3;
+    for (int attempt = 0; attempt < kAttempts; ++attempt) {
+        if (m_device->gimbalSpeedCtrlR(0.0, 0.0) == 0)
+            return true;
+    }
+    emit commandFailed("Stop Gimbal", -1);
+    return false;
 }
 
 bool CameraController::resetGimbal()

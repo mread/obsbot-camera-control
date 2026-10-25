@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 #include <QObject>
 #include <QPointF>
+#include <QRectF>
 #include <functional>
 
 class CameraController;
@@ -27,6 +28,8 @@ public:
     std::function<void(double)> zoomBy;
     // Called before any gimbal move, so tracking can be switched off first.
     std::function<void()> beforeManualAim;
+    // Where the picture sits inside the target, excluding letterbox bars.
+    std::function<QRectF()> pictureRect;
 
 signals:
     void gimbalMoved();
@@ -35,6 +38,7 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
+    void endDrag();
     void sendSpeed(const QPointF &pos, bool force);
     void centreOn(const QPointF &pos);
 

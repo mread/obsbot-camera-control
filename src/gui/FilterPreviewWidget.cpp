@@ -302,8 +302,8 @@ namespace {
 class GuidesOverlay : public QWidget
 {
 public:
-    GuidesOverlay(QWidget *parent, std::function<QSizeF()> frameSize)
-        : QWidget(parent), m_frameSize(std::move(frameSize))
+    GuidesOverlay(QWidget *parent, std::function<QRectF()> pictureRect)
+        : QWidget(parent), m_pictureRect(std::move(pictureRect))
     {
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setAttribute(Qt::WA_NoSystemBackground);
@@ -313,19 +313,9 @@ public:
 protected:
     void paintEvent(QPaintEvent *) override
     {
-        // The frame keeps its aspect ratio, centred (see renderToCurrentTarget).
-        const QSizeF frame = m_frameSize();
-        if (frame.isEmpty())
+        const QRectF area = m_pictureRect();
+        if (area.isEmpty())
             return;
-        const qreal frameAspect = frame.width() / frame.height();
-        QRectF area = rect();
-        if (frameAspect > area.width() / area.height()) {
-            const qreal h = area.width() / frameAspect;
-            area = QRectF(area.left(), area.center().y() - h / 2, area.width(), h);
-        } else {
-            const qreal w = area.height() * frameAspect;
-            area = QRectF(area.center().x() - w / 2, area.top(), w, area.height());
-        }
 
         QList<QLineF> lines;
         for (int i = 1; i <= 2; ++i) {
@@ -343,7 +333,7 @@ protected:
     }
 
 private:
-    std::function<QSizeF()> m_frameSize;
+    std::function<QRectF()> m_pictureRect;
 };
 
 } // namespace
@@ -351,9 +341,7 @@ private:
 void FilterPreviewWidget::setGuidesVisible(bool visible)
 {
     if (!m_guidesOverlay) {
-        m_guidesOverlay = new GuidesOverlay(this, [this]() {
-            return m_currentImage.isNull() ? QSizeF() : frameAspectSize();
-        });
+        m_guidesOverlay = new GuidesOverlay(this, [this]() { return pictureRect(); });
         m_guidesOverlay->setGeometry(rect());
     }
     m_guidesOverlay->setVisible(visible);
@@ -517,6 +505,22 @@ void FilterPreviewWidget::renderToCurrentTarget(const QSize &targetSize)
 
     m_texture->release();
     m_program->release();
+}
+
+QRectF FilterPreviewWidget::pictureRect() const
+{
+    // Matches the letterboxing in renderToCurrentTarget.
+    if (m_currentImage.isNull() || width() <= 0 || height() <= 0)
+        return QRectF();
+    const QSizeF frame = frameAspectSize();
+    const qreal frameAspect = frame.width() / frame.height();
+    const QRectF area = rect();
+    if (frameAspect > area.width() / area.height()) {
+        const qreal h = area.width() / frameAspect;
+        return QRectF(area.left(), area.center().y() - h / 2, area.width(), h);
+    }
+    const qreal w = area.height() * frameAspect;
+    return QRectF(area.center().x() - w / 2, area.top(), w, area.height());
 }
 
 QSizeF FilterPreviewWidget::frameAspectSize() const

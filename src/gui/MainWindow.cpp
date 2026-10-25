@@ -482,8 +482,9 @@ void MainWindow::setupUI()
         scheduleGimbalRefresh();
     });
 
-    if (QWidget *display = m_previewWidget->findChild<FilterPreviewWidget *>()) {
+    if (FilterPreviewWidget *display = m_previewWidget->findChild<FilterPreviewWidget *>()) {
         m_previewAim = new PreviewAimFilter(m_controller, display, this);
+        m_previewAim->pictureRect = [display]() { return display->pictureRect(); };
         m_previewAim->zoomBy = [this](double delta) { m_tiny2CameraTab->stepZoom(delta); };
         m_previewAim->beforeManualAim = [this]() { takeManualControl(); };
         connect(m_previewAim, &PreviewAimFilter::gimbalMoved, this, &MainWindow::scheduleGimbalRefresh);
