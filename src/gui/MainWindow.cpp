@@ -982,14 +982,7 @@ void MainWindow::onTogglePreview(bool enabled)
         m_cameraWarningLabel->setVisible(false);
         m_cameraWarningLabel->setText("");
 
-        // Prefer SDK-reported UVC path when connected; else fall back to description-based detection
-        QString devicePath;
-        if (m_controller->isConnected()) {
-            devicePath = m_controller->getVideoDevicePath();
-        }
-        if (devicePath.isEmpty()) {
-            devicePath = findObsbotVideoDevice();
-        }
+        const QString devicePath = currentCameraDevicePath();
 
         if (devicePath.isEmpty()) {
             // Could not detect OBSBOT camera device
@@ -1000,17 +993,12 @@ void MainWindow::onTogglePreview(bool enabled)
             return;
         }
 
-        // Check if camera is already in use BEFORE doing any layout changes
-        QString process = getProcessUsingCamera(devicePath);
-        if (!process.isEmpty()) {
-            // Camera is in use - show warning and abort
-            QString warningText = "⚠ Cannot open camera preview\n(In use by: " + process + ")";
-            m_cameraWarningLabel->setText(warningText);
-            m_cameraWarningLabel->setVisible(true);
-            m_aimPad->setMessage(tr("%1 is using the camera, so there's no preview. "
-                                    "You can still aim it here and change any setting.").arg(process));
-
-            // Uncheck the button
+        // Only a process that is streaming blocks the preview; one that merely
+        // has the device open (a browser after a call, another control app)
+        // does not, so don't refuse on those.
+        const QList<CameraHolder> streaming = streamingHolders(devicePath);
+        if (!streaming.isEmpty()) {
+            showCameraBusy(streaming);
             m_previewToggleButton->setChecked(false);
             return;
         }
@@ -1671,8 +1659,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::onPreviewStarted()
 {
-    m_cameraWarningLabel->setVisible(false);
-    m_cameraWarningLabel->setText("");
+    hideCameraBusy();
 
     if (m_previewDetached) {
         m_previewWindow->show();
@@ -1690,25 +1677,13 @@ void MainWindow::onPreviewStarted()
 
 void MainWindow::onPreviewFailed(const QString &error)
 {
-    Q_UNUSED(error);
-    // Show warning when preview fails
-    QString warningText = "⚠ Cannot open camera preview";
-
-    // Try to detect which process is using the camera
-    const QString failedDevice = m_detectedCameras.isEmpty()
-        ? QStringLiteral("/dev/video0")
-        : m_detectedCameras.value(
-              m_cameraSelectorCombo ? m_cameraSelectorCombo->currentIndex() : 0
-          ).devicePath;
-    QString process = getProcessUsingCamera(failedDevice);
-    if (!process.isEmpty()) {
-        warningText += "\n(In use by: " + process + ")";
+    const QList<CameraHolder> streaming = streamingHolders(currentCameraDevicePath());
+    if (!streaming.isEmpty()) {
+        showCameraBusy(streaming);
     } else {
-        warningText += "\n(In use by another application)";
+        m_cameraWarningLabel->setText(tr("\u26a0 Cannot open camera preview\n%1").arg(error));
+        m_cameraWarningLabel->setVisible(true);
     }
-
-    m_cameraWarningLabel->setText(warningText);
-    m_cameraWarningLabel->setVisible(true);
 
     attachPreviewToPanel();
     m_previewWindow->hide();
@@ -1841,43 +1816,44 @@ QString MainWindow::findObsbotVideoDevice()
     return QString();
 }
 
-QString MainWindow::getProcessUsingCamera(const QString &devicePath)
+QString MainWindow::currentCameraDevicePath()
 {
-    // Use lsof to find which process has the camera device open
-    QProcess process;
-    process.start("lsof", QStringList() << devicePath);
-    process.waitForFinished(1000);
+    // Prefer the SDK-reported UVC path; else fall back to description-based detection
+    QString devicePath;
+    if (m_controller->isConnected())
+        devicePath = m_controller->getVideoDevicePath();
+    if (devicePath.isEmpty())
+        devicePath = findObsbotVideoDevice();
+    return devicePath;
+}
 
-    QString output = process.readAllStandardOutput();
-    QStringList lines = output.split('\n');
+void MainWindow::showCameraBusy(const QList<CameraHolder> &streaming)
+{
+    QStringList names;
+    for (const auto &holder : streaming)
+        names << describeHolder(holder);
+    QString text = tr("\u26a0 No preview: %1 is streaming from the camera.").arg(names.join(tr(", ")));
 
-    // Get our own PID to filter ourselves out
-    qint64 ourPid = QCoreApplication::applicationPid();
-
-    // lsof output format:
-    // COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-    // chrome  12345 user   42u   CHR  81,0      0t0  123 /dev/video0
-
-    for (int i = 1; i < lines.size(); ++i) {  // Skip header line
-        QString line = lines[i].trimmed();
-        if (line.isEmpty()) continue;
-
-        QStringList parts = line.split(QRegularExpression("\\s+"));
-        if (parts.size() >= 2) {
-            QString command = parts[0];
-            QString pidStr = parts[1];
-            qint64 pid = pidStr.toLongLong();
-
-            // Skip our own process - we already have the camera for control
-            if (pid == ourPid) {
-                continue;
-            }
-
-            return QString("%1 (PID: %2)").arg(command).arg(pidStr);
-        }
+    // Also list what merely has it open, so it's clear those aren't the problem.
+    QStringList idle;
+    for (const auto &holder : cameraHolders(currentCameraDevicePath())) {
+        if (!holder.streaming)
+            idle << describeHolder(holder);
     }
+    if (!idle.isEmpty())
+        text += tr("\nAlso open, but not blocking: %1").arg(idle.join(tr(", ")));
 
-    return QString();  // Not found (or only we're using it)
+    m_cameraWarningLabel->setText(text);
+    m_cameraWarningLabel->setVisible(true);
+    m_aimPad->setMessage(tr("%1 is streaming from the camera, so there's no preview. "
+                            "You can still aim it here and change any setting.").arg(streaming.first().name));
+}
+
+void MainWindow::hideCameraBusy()
+{
+    m_cameraWarningLabel->setVisible(false);
+    m_cameraWarningLabel->setText(QString());
+    m_aimPad->setMessage(QString());
 }
 
 void MainWindow::setupTrayIcon()

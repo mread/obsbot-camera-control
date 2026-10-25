@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QPushButton>
 #include <QTabWidget>
 #include <QTimer>
 #include <cstring>
@@ -54,8 +55,10 @@ int main(int argc, char *argv[])
     QCommandLineOption screenshotOption("screenshot",
         "Save a PNG of the window once the camera has connected, then quit.", "file");
     QCommandLineOption tabOption("tab", "Tab to show for --screenshot (0 = first).", "index", "0");
+    QCommandLineOption previewOption("start-preview", "With --screenshot, start the preview first.");
     parser.addOption(screenshotOption);
     parser.addOption(tabOption);
+    parser.addOption(previewOption);
     parser.process(app);
 
     MainWindow window;
@@ -66,10 +69,15 @@ int main(int argc, char *argv[])
     if (parser.isSet(screenshotOption)) {
         const QString path = parser.value(screenshotOption);
         const int tab = parser.value(tabOption).toInt();
+        const bool startPreview = parser.isSet(previewOption);
         // SDK discovery takes ~3.5 s; give the UI time to fill in.
-        QTimer::singleShot(9000, &window, [&window, path, tab]() {
+        QTimer::singleShot(9000, &window, [&window, path, tab, startPreview]() {
             if (auto *tabs = window.findChild<QTabWidget *>("controlTabs"))
                 tabs->setCurrentIndex(tab);
+            if (startPreview) {
+                if (auto *button = window.findChild<QPushButton *>("primaryAction"))
+                    button->setChecked(true);
+            }
             QTimer::singleShot(1500, &window, [&window, path]() {
                 window.grab().save(path);
                 QApplication::quit();

@@ -15,6 +15,7 @@
 #include "CameraSettingsWidget.h"
 #include "CameraPreviewWidget.h"
 #include "VideoEffectsWidget.h"
+#include "CameraHolders.h"
 
 class PreviewWindow;
 class QSplitter;
@@ -81,7 +82,9 @@ private:
     void loadConfiguration();
     void handleConfigErrors(const std::vector<Config::ValidationError> &errors);
     CameraController::CameraState getUIState() const;  // Get current UI state
-    QString getProcessUsingCamera(const QString &devicePath);  // Detect which process is using camera
+    QString currentCameraDevicePath();
+    void showCameraBusy(const QList<CameraHolder> &holders);
+    void hideCameraBusy();
     QString findObsbotVideoDevice();  // Find which /dev/video* device is the OBSBOT camera
     void applyModernStyle();
     void detachPreviewToWindow();
