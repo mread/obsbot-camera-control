@@ -20,6 +20,27 @@ A native Qt6 application for controlling OBSBOT cameras on Linux. Provides full 
 
 *Left: Main control interface with PTZ controls, auto-framing, and advanced settings. Right: Live preview showing face tracking in action.*
 
+### Tiny 2 layout
+
+With a Tiny 2 connected the window switches to a preview-first layout modelled on OBSBOT Center and Insta360 Link Controller. These were taken while another app had the camera, so the aiming pad stands in for the preview: it shows the gimbal's real position (read from the motors) and the presets stored on the camera.
+
+<p align="center">
+  <img src="docs/media/tiny2-camera-tab.png" alt="Tiny 2 Camera tab: zoom, field of view, position, presets, start-up position and tracking zone" width="600"/>
+</p>
+<p align="center">
+  <img src="docs/media/tiny2-image-tab.png" alt="Tiny 2 Image tab: exposure, white balance, focus and picture controls" width="400"/>
+  <img src="docs/media/tiny2-device-tab.png" alt="Tiny 2 Device tab: sleep, gesture control, voice control, microphone and device details" width="400"/>
+</p>
+
+*Top: Camera tab with the AI mode bar under the aiming pad. Bottom: Image and Device tabs.*
+
+Aim by dragging on the preview (or the pad), scroll to zoom, double-click to centre on a point. For keyboard shortcuts, bind keys to `obsbot-gui --action ...` (see `obsbot-gui --help`), e.g. in sway:
+
+```
+bindsym $mod+Ctrl+1 exec obsbot-gui --action preset 1
+bindsym $mod+Ctrl+t exec obsbot-gui --action track
+```
+
 ## Features
 
 ### Camera Control
