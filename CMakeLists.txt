@@ -30,6 +30,8 @@ add_executable(obsbot-gui
     src/gui/CameraHolders.cpp
     src/gui/CameraHolders.h
     src/gui/ControlService.cpp
+    src/gui/FlowLayout.cpp
+    src/gui/FlowLayout.h
     src/gui/ControlService.h
     src/gui/ModeBar.cpp
     src/gui/ModeBar.h

@@ -1,4 +1,5 @@
 #include "ModeBar.h"
+#include "FlowLayout.h"
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -10,8 +11,7 @@ ModeBar::ModeBar(CameraController *controller, QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    QHBoxLayout *modeRow = new QHBoxLayout();
-    modeRow->setSpacing(6);
+    FlowLayout *modeRow = new FlowLayout(nullptr, 6, 6);
     m_modeGroup = new QButtonGroup(this);
     m_modeGroup->setExclusive(true);
     const struct { const char *label; int mode; const char *tip; } modes[] = {
@@ -29,16 +29,23 @@ ModeBar::ModeBar(CameraController *controller, QWidget *parent)
         m_modeGroup->addButton(button, m.mode);
         modeRow->addWidget(button);
     }
-    modeRow->addStretch();
     layout->addLayout(modeRow);
     connect(m_modeGroup, &QButtonGroup::idClicked, this, &ModeBar::onModeClicked);
 
-    QHBoxLayout *optionsRow = new QHBoxLayout();
-    optionsRow->setSpacing(10);
+    // Each label stays with its control when the row wraps.
+    FlowLayout *optionsRow = new FlowLayout(nullptr, 16, 6);
+    auto chunk = [this]() {
+        QWidget *box = new QWidget(this);
+        QHBoxLayout *boxLayout = new QHBoxLayout(box);
+        boxLayout->setContentsMargins(0, 0, 0, 0);
+        boxLayout->setSpacing(6);
+        return std::make_pair(box, boxLayout);
+    };
 
-    m_framingLabel = new QLabel(tr("Framing"), this);
-    optionsRow->addWidget(m_framingLabel);
-    m_framingCombo = new QComboBox(this);
+    auto [framingBox, framingLayout] = chunk();
+    m_framingLabel = new QLabel(tr("Framing"), framingBox);
+    framingLayout->addWidget(m_framingLabel);
+    m_framingCombo = new QComboBox(framingBox);
     m_framingCombo->addItem(tr("Normal"), Device::AiSubModeNormal);
     m_framingCombo->addItem(tr("Upper body"), Device::AiSubModeUpperBody);
     m_framingCombo->addItem(tr("Close-up"), Device::AiSubModeCloseUp);
@@ -46,31 +53,30 @@ ModeBar::ModeBar(CameraController *controller, QWidget *parent)
     m_framingCombo->addItem(tr("Lower body"), Device::AiSubModeLowerBody);
     connect(m_framingCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ModeBar::onFramingChanged);
-    optionsRow->addWidget(m_framingCombo);
+    framingLayout->addWidget(m_framingCombo);
+    optionsRow->addWidget(framingBox);
 
-    optionsRow->addSpacing(12);
-    QLabel *trackingLabel = new QLabel(tr("Tracking"), this);
-    optionsRow->addWidget(trackingLabel);
+    auto [trackingBox, trackingLayout] = chunk();
+    trackingLayout->addWidget(new QLabel(tr("Tracking"), trackingBox));
     m_trackingGroup = new QButtonGroup(this);
     m_trackingGroup->setExclusive(true);
-    QPushButton *standard = new QPushButton(tr("Standard"), this);
+    QPushButton *standard = new QPushButton(tr("Standard"), trackingBox);
     standard->setCheckable(true);
     standard->setToolTip(tr("Smooth tracking for people sitting or moving slowly"));
-    QPushButton *motion = new QPushButton(tr("Motion"), this);
+    QPushButton *motion = new QPushButton(tr("Motion"), trackingBox);
     motion->setCheckable(true);
     motion->setToolTip(tr("Faster tracking for people moving about"));
     m_trackingGroup->addButton(standard, Device::AiVTrackStandard);
     m_trackingGroup->addButton(motion, Device::AiVTrackMotion);
-    optionsRow->addWidget(standard);
-    optionsRow->addWidget(motion);
+    trackingLayout->addWidget(standard);
+    trackingLayout->addWidget(motion);
+    optionsRow->addWidget(trackingBox);
     connect(m_trackingGroup, &QButtonGroup::idClicked, this, &ModeBar::onTrackingModeClicked);
 
-    optionsRow->addSpacing(12);
     m_autoZoomCheckBox = new QCheckBox(tr("Auto zoom"), this);
     m_autoZoomCheckBox->setToolTip(tr("Let tracking zoom to keep the subject framed"));
     connect(m_autoZoomCheckBox, &QCheckBox::toggled, this, &ModeBar::onAutoZoomToggled);
     optionsRow->addWidget(m_autoZoomCheckBox);
-    optionsRow->addStretch();
     layout->addLayout(optionsRow);
 }
 

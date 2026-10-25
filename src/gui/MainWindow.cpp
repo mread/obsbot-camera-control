@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "AimPad.h"
 #include "ControlService.h"
+#include "FlowLayout.h"
 #include "ModeBar.h"
 #include "PreviewAimFilter.h"
 #include "Tiny2CameraTab.h"
@@ -261,25 +262,21 @@ void MainWindow::setupUI()
     previewLayout->setContentsMargins(16, 16, 16, 16);
     previewLayout->setSpacing(12);
 
-    QHBoxLayout *previewHeader = new QHBoxLayout();
-    previewHeader->setContentsMargins(0, 0, 0, 0);
-    previewHeader->setSpacing(8);
+    // Wraps rather than clipping when a tiling window manager makes the window narrow.
+    FlowLayout *previewHeader = new FlowLayout(nullptr, 12, 8);
 
     QLabel *previewTitle = new QLabel(tr("Live Preview"), m_previewCard);
     previewTitle->setObjectName("previewTitle");
     previewHeader->addWidget(previewTitle);
-    previewHeader->addStretch();
 
     m_snapshotButton = new QPushButton(tr("Snapshot"), m_previewCard);
     m_snapshotButton->setObjectName("snapshotButton");
     m_snapshotButton->setEnabled(false);
-    previewHeader->addWidget(m_snapshotButton);
 
     m_copyClipboardButton = new QPushButton(tr("Copy"), m_previewCard);
     m_copyClipboardButton->setObjectName("copyClipboardButton");
     m_copyClipboardButton->setToolTip(tr("Copy current frame to clipboard"));
     m_copyClipboardButton->setEnabled(false);
-    previewHeader->addWidget(m_copyClipboardButton);
 
     m_detachPreviewButton = new QPushButton(tr("Pop Out Preview"), m_previewCard);
     m_detachPreviewButton->setObjectName("detachButton");
@@ -287,7 +284,6 @@ void MainWindow::setupUI()
     m_detachPreviewButton->setEnabled(false);
     connect(m_detachPreviewButton, &QPushButton::toggled,
             this, &MainWindow::onDetachPreviewToggled);
-    previewHeader->addWidget(m_detachPreviewButton);
     previewLayout->addLayout(previewHeader);
 
     m_previewStack = new QStackedWidget(m_previewCard);
@@ -301,11 +297,17 @@ void MainWindow::setupUI()
 
     // Move the preview widget's control row into the header for compact layout
     QWidget *controlRow = m_previewWidget->findChild<QWidget*>("controlRow");
-    if (controlRow) {
-        // Insert after the title and spacing, before the stretch
-        previewHeader->insertWidget(2, controlRow);
-        previewHeader->insertSpacing(2, 16);
-    }
+    if (controlRow)
+        previewHeader->addWidget(controlRow);
+
+    QWidget *headerButtons = new QWidget(m_previewCard);
+    QHBoxLayout *headerButtonsLayout = new QHBoxLayout(headerButtons);
+    headerButtonsLayout->setContentsMargins(0, 0, 0, 0);
+    headerButtonsLayout->setSpacing(8);
+    headerButtonsLayout->addWidget(m_snapshotButton);
+    headerButtonsLayout->addWidget(m_copyClipboardButton);
+    headerButtonsLayout->addWidget(m_detachPreviewButton);
+    previewHeader->addWidget(headerButtons);
 
     m_previewStack->addWidget(m_previewWidget);
 
@@ -1207,8 +1209,9 @@ void MainWindow::setTiny2Layout(bool tiny2)
     }
     m_tabWidget->setCurrentIndex(0);
     m_modeBar->setVisible(tiny2);
-    // The Tiny 2 tabs carry more per row; keep them from being clipped.
+    // The Tiny 2 tabs and mode bar carry more per row; keep them from being clipped.
     m_controlCard->setMinimumWidth(tiny2 ? 600 : 340);
+    m_previewCard->setMinimumWidth(tiny2 ? qMax(520, m_modeBar->minimumSizeHint().width() + 40) : 520);
     if (m_previewStack->currentWidget() != m_previewWidget)
         showPreviewPlaceholder();
     fitTabToCurrentPage();
