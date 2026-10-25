@@ -80,6 +80,12 @@ QWidget *Tiny2CameraTab::buildViewSection()
     viewRow->addStretch();
     connect(m_viewGroup, &QButtonGroup::idClicked, this, &Tiny2CameraTab::onViewClicked);
     layout->addLayout(viewRow);
+    // Measured on a Tiny 2: narrow visibly crops a 3840×2160 stream, but a
+    // 1920×1080 one is unchanged, and opening a stream resets it to wide.
+    QLabel *viewNote = new QLabel(tr("Only changes the picture on a 4K (3840×2160) stream; at 1080p it has "
+                                     "no visible effect. Starting a stream sets it back to Wide."), group);
+    viewNote->setWordWrap(true);
+    layout->addWidget(viewNote);
 
     QHBoxLayout *positionRow = new QHBoxLayout();
     m_positionLabel = new QLabel(tr("Position unknown"), group);
